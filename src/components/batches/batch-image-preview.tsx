@@ -139,10 +139,10 @@ function BeforeAfterSlider({
       };
 
   return (
-    <div className="rounded-[24px] bg-white/60 p-4">
+    <div className="surface-soft rounded-[24px] p-4">
       <p className="eyebrow">Before / after</p>
-      <div className="mt-3 overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(255,255,255,0.72)]">
-        <div className={fitWithinViewport ? "flex items-center justify-center bg-[rgba(243,239,230,0.82)] p-3 sm:p-4" : "bg-[rgba(243,239,230,0.82)]"}>
+      <div className="surface-strong border-theme mt-3 overflow-hidden rounded-[18px] border">
+        <div className={fitWithinViewport ? "surface-muted flex items-center justify-center p-3 sm:p-4" : "surface-muted"}>
           <div
             className="relative w-full cursor-ew-resize select-none overflow-hidden touch-none"
             onDragStart={(event) => event.preventDefault()}
@@ -164,7 +164,7 @@ function BeforeAfterSlider({
                 sizes="100vw"
                 src={resultSrc}
               />
-              <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+              <div className="overlay-ink pointer-events-none absolute right-3 top-3 rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
                 After
               </div>
             </div>
@@ -181,25 +181,25 @@ function BeforeAfterSlider({
                 sizes="100vw"
                 src={originalSrc}
               />
-              <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+              <div className="overlay-ink pointer-events-none absolute left-3 top-3 rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
                 Before
               </div>
             </div>
             <div className="pointer-events-none absolute inset-y-0" style={{ left: `calc(${sliderValue}% - 1px)` }}>
-              <div className="relative h-full w-[2px] bg-white/95 shadow-[0_0_0_1px_rgba(0,0,0,0.12)]">
-                <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-lg text-[var(--foreground)] shadow-[0_10px_30px_rgba(17,24,18,0.18)]">
+              <div className="overlay-contrast relative h-full w-[2px] shadow-[0_0_0_1px_var(--line)]">
+                <div className="panel absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-lg text-[var(--foreground)] shadow-[0_10px_30px_rgba(17,24,18,0.18)]">
                   <span aria-hidden="true">↔</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-black/8 px-4 py-3 text-sm">
+        <div className="border-theme flex items-center justify-between gap-3 border-t px-4 py-3 text-sm">
           <span>{filename}</span>
           {onOpen ? (
             <button
               aria-label={`Open ${filename} in lightbox`}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-[var(--foreground)] transition hover:-translate-y-0.5 hover:bg-[rgba(20,83,45,0.08)]"
+              className="surface-strong border-theme inline-flex h-10 w-10 items-center justify-center rounded-full border text-[var(--foreground)] transition hover:-translate-y-0.5 hover-surface"
               onClick={onOpen}
               type="button"
             >
@@ -252,18 +252,18 @@ function SingleImagePreview({
     : { aspectRatio };
 
   return (
-    <div className="rounded-[24px] bg-white/60 p-4">
+    <div className="surface-soft rounded-[24px] p-4">
       <p className="eyebrow">{label}</p>
       {src ? (
-        <div className="mt-3 overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(255,255,255,0.72)]">
-          <div className={fitWithinViewport ? "flex items-center justify-center bg-[rgba(243,239,230,0.82)] p-3 sm:p-4" : "bg-[rgba(243,239,230,0.82)]"}>
+        <div className="surface-strong border-theme mt-3 overflow-hidden rounded-[18px] border">
+          <div className={fitWithinViewport ? "surface-muted flex items-center justify-center p-3 sm:p-4" : "surface-muted"}>
             <div className="relative w-full" style={imageStyle}>
               <Image alt={alt} className="object-contain" draggable={false} fill onLoad={syncAspectRatio} sizes="100vw" src={src} />
             </div>
           </div>
         </div>
       ) : (
-        <div className="mt-3 flex min-h-[320px] items-center justify-center rounded-[18px] border border-black/8 bg-[rgba(255,255,255,0.72)] px-6 text-center text-sm muted">
+        <div className="surface-strong border-theme mt-3 flex min-h-[320px] items-center justify-center rounded-[18px] border px-6 text-center text-sm muted">
           {emptyLabel}
         </div>
       )}
@@ -386,7 +386,7 @@ export function BatchImagePreview({
         ? createPortal(
             <div
               aria-modal="true"
-              className="fixed inset-0 z-[100] flex min-h-screen w-screen items-center justify-center bg-[rgba(18,24,19,0.82)] p-4 backdrop-blur-sm sm:p-8"
+              className="fixed inset-0 z-[100] flex min-h-screen w-screen items-center justify-center bg-[rgba(8,11,9,0.82)] p-4 backdrop-blur-sm sm:p-8"
               onClick={() => setIsOpen(false)}
               role="dialog"
             >
@@ -404,7 +404,7 @@ export function BatchImagePreview({
                   </button>
                 </div>
                 <div
-                  className="min-h-0 flex flex-1 items-center justify-center overflow-hidden rounded-[24px] bg-[rgba(255,255,255,0.72)] p-2 sm:p-4"
+                  className="surface-strong min-h-0 flex flex-1 items-center justify-center overflow-hidden rounded-[24px] p-2 sm:p-4"
                   ref={modalContentRef}
                 >
                   {modalContent}

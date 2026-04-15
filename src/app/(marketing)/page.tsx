@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TopMenu } from "@/components/theme/top-menu";
+
 const features = [
   "Upload multiple source images with a different prompt for each one.",
   "Run a single image or the entire batch without leaving the detail page.",
@@ -10,7 +12,8 @@ const features = [
 export default function LandingPage() {
   return (
     <main className="shell py-8 sm:py-10">
-      <section className="panel overflow-hidden rounded-[40px] p-8 sm:p-12">
+      <TopMenu />
+      <section className="panel mt-6 overflow-hidden rounded-[40px] p-8 sm:p-12">
         <div className="grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
           <div className="space-y-6">
             <p className="eyebrow">Next.js + Supabase</p>
@@ -21,7 +24,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link className="button button-primary" href="/batches">
-                Open dashboard
+                Dashboard
               </Link>
               <Link className="button button-secondary" href="/register">
                 Register
@@ -31,11 +34,11 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <div className="rounded-[28px] border border-black/10 bg-[rgba(20,83,45,0.08)] p-6">
+          <div className="hero-tint border-theme rounded-[28px] border p-6">
             <p className="eyebrow">Workflow</p>
             <div className="mt-4 grid gap-4">
               {features.map((feature) => (
-                <div className="rounded-[22px] bg-white/75 p-4" key={feature}>
+                <div className="surface-strong rounded-[22px] p-4" key={feature}>
                   {feature}
                 </div>
               ))}

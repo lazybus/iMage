@@ -22,13 +22,13 @@ export default async function BatchesPage() {
       </div>
 
       {batches.length === 0 ? (
-        <div className="rounded-[24px] border border-dashed border-black/12 bg-white/55 p-8 text-sm muted">
+        <div className="surface-soft rounded-[24px] border border-dashed border-theme p-8 text-sm muted">
           No batches yet. Create the first batch to upload original images and prompts.
         </div>
       ) : (
         <div className="grid gap-4">
           {batches.map((batch) => (
-            <Link className="rounded-[26px] border border-black/8 bg-white/65 p-5 hover:bg-white" href={`/batches/${batch.id}`} key={batch.id}>
+            <Link className="surface-muted hover-surface rounded-[26px] border border-theme p-5 transition" href={`/batches/${batch.id}`} key={batch.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-semibold tracking-[-0.04em]">{batch.title}</h2>

@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BatchImagePreview } from "@/components/batches/batch-image-preview";
-import { BatchRunControls } from "@/components/batches/batch-run-controls";
+import { BatchDetailClient } from "@/components/batches/batch-detail-client";
 import { StatusPill } from "@/components/batches/status-pill";
 import { requireUser } from "@/lib/auth/guards";
 import { getBatchDetail } from "@/lib/db/queries";
@@ -58,51 +56,21 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ ba
           </div>
           <StatusPill status={batch.status} />
         </div>
-        <div className="mt-8 grid gap-4 rounded-[26px] border border-black/8 bg-white/55 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <strong>Queue controls</strong>
-            <Link className="button button-secondary" href={`/api/batches/${batch.id}/download`}>
-              Download completed zip
-            </Link>
-          </div>
-          <BatchRunControls batchId={batch.id} imageIds={batch.images.map((image) => image.id)} />
+        <div className="surface-soft border-theme mt-8 grid gap-4 rounded-[26px] border p-5">
+          <BatchDetailClient
+            batchId={batch.id}
+            batchStatus={batch.status}
+            imageCards={imageCards.map(({ image, latestResult, originalPreviewUrl, resultPreviewUrl }) => ({
+              editPrompt: image.edit_prompt,
+              id: image.id,
+              originalFilename: image.original_filename,
+              originalPreviewUrl,
+              resultPreviewUrl,
+              resultStatus: latestResult?.status ?? null,
+              status: image.status,
+            }))}
+          />
         </div>
-      </section>
-
-      <section className="grid gap-4">
-        {imageCards.map(({ image, latestResult, originalPreviewUrl, resultPreviewUrl }) => {
-          return (
-            <article className="panel rounded-[28px] p-6" key={image.id}>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-semibold tracking-[-0.04em]">{image.original_filename}</h2>
-                    <StatusPill status={image.status} />
-                  </div>
-                  <p className="whitespace-pre-wrap muted">
-                    <span className="font-semibold text-[var(--ink)]">Prompt:</span> {image.edit_prompt}
-                  </p>
-                </div>
-                {latestResult?.status === "completed" ? (
-                  <Link className="button button-secondary" href={`/api/images/${image.id}/download`}>
-                    Download image
-                  </Link>
-                ) : null}
-              </div>
-              <div className="mt-6">
-                <BatchImagePreview
-                  filename={image.original_filename}
-                  originalAlt={`Original upload for ${image.original_filename}`}
-                  originalEmptyLabel="Original preview unavailable"
-                  originalSrc={originalPreviewUrl}
-                  resultAlt={`Returned result for ${image.original_filename}`}
-                  resultEmptyLabel={latestResult?.status === "completed" ? "Returned image preview unavailable" : "Returned image not available yet"}
-                  resultSrc={resultPreviewUrl}
-                />
-              </div>
-            </article>
-          );
-        })}
       </section>
     </div>
   );

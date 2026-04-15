@@ -1,4 +1,5 @@
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { TopMenu } from "@/components/theme/top-menu";
 import { requireUser } from "@/lib/auth/guards";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -19,7 +20,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
 
   return (
     <main className="shell shell-dashboard py-6 sm:py-8">
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-6">
+        <TopMenu />
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
         <DashboardSidebar email={user.email ?? "unknown"} />
         <div className="grid gap-6">{children}</div>
       </div>

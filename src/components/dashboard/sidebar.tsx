@@ -11,10 +11,10 @@ export function DashboardSidebar({ email }: { email: string }) {
         <p className="muted text-sm">Signed in as {email}</p>
       </div>
       <nav className="grid gap-2 text-sm">
-        <Link className="rounded-full px-4 py-3 hover:bg-black/5" href="/batches">
+        <Link className="rounded-full px-4 py-3 transition hover-surface" href="/batches">
           All batches
         </Link>
-        <Link className="rounded-full px-4 py-3 hover:bg-black/5" href="/batches/new">
+        <Link className="rounded-full px-4 py-3 transition hover-surface" href="/batches/new">
           New batch
         </Link>
       </nav>

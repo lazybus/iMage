@@ -83,7 +83,7 @@ export function NewBatchForm({ configured }: { configured: boolean }) {
 
       <div className="grid gap-4">
         {rows.map((row, index) => (
-          <div className="rounded-[24px] border border-black/10 bg-white/60 p-4" key={row.id}>
+          <div className="surface-soft border-theme rounded-[24px] border p-4" key={row.id}>
             <div className="mb-3 flex items-center justify-between">
               <strong>Image {index + 1}</strong>
               {rows.length > 1 ? (

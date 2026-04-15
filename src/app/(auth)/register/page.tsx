@@ -26,7 +26,7 @@ export default async function RegisterPage({
             New users can register with email and password or use Google OAuth, then access the same protected dashboard flow.
           </p>
           {!isSupabaseConfigured() ? (
-            <div className="mt-6 rounded-[24px] bg-[rgba(255,255,255,0.65)] p-5 text-sm muted">
+            <div className="surface-muted mt-6 rounded-[24px] p-5 text-sm muted">
               Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` to activate registration.
             </div>
           ) : null}

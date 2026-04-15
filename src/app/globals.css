@@ -1,8 +1,35 @@
 @import "tailwindcss";
 
 :root {
+  --background: #0e1412;
+  --foreground: #eef6ef;
+  --brand-mark: #8ed0a3;
+  --brand-word: #eef6ef;
+  --panel: rgba(17, 24, 20, 0.82);
+  --panel-strong: rgba(25, 35, 29, 0.96);
+  --border: rgba(218, 232, 221, 0.12);
+  --muted: #9aa99d;
+  --accent: #8ed0a3;
+  --accent-strong: #74bd8c;
+  --accent-soft: rgba(94, 157, 114, 0.16);
+  --danger-soft: rgba(210, 98, 90, 0.18);
+  --line: rgba(238, 246, 239, 0.1);
+  --field-background: rgba(18, 25, 21, 0.84);
+  --field-border: rgba(238, 246, 239, 0.12);
+  --surface-soft: rgba(255, 255, 255, 0.05);
+  --surface-muted: rgba(255, 255, 255, 0.07);
+  --surface-strong: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.28);
+  --hero-tint: rgba(142, 208, 163, 0.12);
+  --overlay-ink: rgba(8, 11, 9, 0.74);
+  --overlay-contrast: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme="light"] {
   --background: #f3efe6;
   --foreground: #1f2721;
+  --brand-mark: #14532d;
+  --brand-word: #5f6c62;
   --panel: rgba(255, 252, 245, 0.82);
   --panel-strong: #fffdf7;
   --border: rgba(32, 39, 33, 0.12);
@@ -11,6 +38,16 @@
   --accent-strong: #0f3f23;
   --accent-soft: #d7f0df;
   --danger-soft: #ffe1df;
+  --line: rgba(31, 39, 33, 0.08);
+  --field-background: rgba(255, 255, 255, 0.7);
+  --field-border: rgba(31, 39, 33, 0.15);
+  --surface-soft: rgba(255, 255, 255, 0.55);
+  --surface-muted: rgba(255, 255, 255, 0.65);
+  --surface-strong: rgba(255, 255, 255, 0.78);
+  --shadow-color: rgba(17, 24, 18, 0.08);
+  --hero-tint: rgba(20, 83, 45, 0.08);
+  --overlay-ink: rgba(18, 24, 19, 0.72);
+  --overlay-contrast: rgba(255, 255, 255, 0.95);
 }
 
 * {
@@ -18,6 +55,13 @@
 }
 
 html {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(142, 208, 163, 0.12), transparent 32%),
+    var(--background);
+}
+
+html[data-theme="light"] {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), transparent 34%),
     radial-gradient(circle at bottom right, rgba(20, 83, 45, 0.08), transparent 32%),
@@ -27,6 +71,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  background: transparent;
   color: var(--foreground);
   font-family: Georgia, "Times New Roman", serif;
 }
@@ -56,7 +101,7 @@ select {
   border: 1px solid var(--border);
   background: var(--panel);
   backdrop-filter: blur(18px);
-  box-shadow: 0 16px 60px rgba(17, 24, 18, 0.08);
+  box-shadow: 0 16px 60px var(--shadow-color);
 }
 
 .pill {
@@ -113,11 +158,11 @@ select {
 
 .button-primary {
   background: var(--accent);
-  color: white;
+  color: #081009;
 }
 
 .button-secondary {
-  background: rgba(20, 83, 45, 0.08);
+  background: var(--accent-soft);
   color: var(--foreground);
 }
 
@@ -125,10 +170,10 @@ select {
 .textarea,
 .select {
   width: 100%;
-  border: 1px solid rgba(31, 39, 33, 0.15);
+  border: 1px solid var(--field-border);
   border-radius: 18px;
   padding: 0.9rem 1rem;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--field-background);
 }
 
 .textarea {
@@ -153,6 +198,78 @@ select {
 
 .muted {
   color: var(--muted);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 60px var(--shadow-color);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.65rem 0.95rem;
+  background: var(--surface-soft);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-1px);
+  background: var(--surface-strong);
+}
+
+.theme-toggle svg {
+  display: block;
+}
+
+.theme-toggle-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.surface-soft {
+  background: var(--surface-soft);
+}
+
+.surface-muted {
+  background: var(--surface-muted);
+}
+
+.surface-strong {
+  background: var(--surface-strong);
+}
+
+.border-theme {
+  border-color: var(--line);
+}
+
+.hover-surface:hover {
+  background: var(--surface-strong);
+}
+
+.hero-tint {
+  background: var(--hero-tint);
+}
+
+.overlay-ink {
+  background: var(--overlay-ink);
+  color: white;
+}
+
+.overlay-contrast {
+  background: var(--overlay-contrast);
 }
 
 @media (max-width: 768px) {

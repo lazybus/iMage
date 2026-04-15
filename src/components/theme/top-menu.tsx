@@ -1,0 +1,22 @@
+import Link from "next/link";
+
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+
+export function TopMenu() {
+  return (
+    <div className="topbar rounded-[26px] px-4 py-3 sm:px-6">
+      <div className="flex items-center gap-4">
+        <Link className="rounded-full px-4 py-2 text-sm font-semibold tracking-[0.18em] text-[var(--muted)] uppercase transition hover-surface" href="/">
+          <span className="text-[var(--brand-mark)]">I</span>
+          <span className="text-[var(--brand-word)]">Mage</span>
+        </Link>
+        <nav className="flex flex-wrap items-center gap-2 text-sm">
+          <Link className="rounded-full px-4 py-2 transition hover-surface" href="/batches">
+            Dashboard
+          </Link>
+        </nav>
+      </div>
+      <ThemeToggle />
+    </div>
+  );
+}
