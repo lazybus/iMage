@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { createPortal } from "react-dom";
 
 interface BatchImagePreviewProps {
   filename: string;
@@ -13,8 +14,54 @@ interface BatchImagePreviewProps {
   resultSrc: string | null;
 }
 
+const LIGHTBOX_MEDIA_EDGE_BUFFER = 12;
+
+function getViewportFitSize(aspectRatio: number, bounds: { height: number; width: number } | null) {
+  if (!bounds) {
+    return null;
+  }
+
+  const maxWidth = Math.max(0, bounds.width - LIGHTBOX_MEDIA_EDGE_BUFFER);
+  const maxHeight = Math.max(0, bounds.height - LIGHTBOX_MEDIA_EDGE_BUFFER);
+
+  if (maxWidth === 0 || maxHeight === 0) {
+    return null;
+  }
+
+  const viewportAspectRatio = maxWidth / maxHeight;
+
+  if (aspectRatio >= viewportAspectRatio) {
+    return {
+      height: Math.floor(maxWidth / aspectRatio),
+      maxHeight,
+      maxWidth,
+      width: Math.floor(maxWidth),
+    };
+  }
+
+  return {
+    height: Math.floor(maxHeight),
+    maxHeight,
+    maxWidth,
+    width: Math.floor(maxHeight * aspectRatio),
+  };
+}
+
+function FullscreenIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path d="M8 4H5a1 1 0 0 0-1 1v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M16 4h3a1 1 0 0 1 1 1v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M20 16v3a1 1 0 0 1-1 1h-3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M4 16v3a1 1 0 0 0 1 1h3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 function BeforeAfterSlider({
   filename,
+  fitBounds,
+  fitWithinViewport = false,
   onOpen,
   originalAlt,
   originalSrc,
@@ -22,6 +69,8 @@ function BeforeAfterSlider({
   resultSrc,
 }: {
   filename: string;
+  fitBounds?: { height: number; width: number } | null;
+  fitWithinViewport?: boolean;
   onOpen?: () => void;
   originalAlt: string;
   originalSrc: string;
@@ -73,80 +122,113 @@ function BeforeAfterSlider({
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
+  const viewportFitSize = fitWithinViewport ? getViewportFitSize(aspectRatio, fitBounds ?? null) : null;
+
+  const sliderStyle = fitWithinViewport
+    ? {
+        aspectRatio,
+        cursor: isDragging ? "grabbing" : "ew-resize",
+        width: viewportFitSize ? `${viewportFitSize.width}px` : "100%",
+        height: viewportFitSize ? `${viewportFitSize.height}px` : undefined,
+        maxWidth: viewportFitSize ? `${viewportFitSize.maxWidth}px` : "100%",
+        maxHeight: viewportFitSize ? `${viewportFitSize.maxHeight}px` : "100%",
+      }
+    : {
+        aspectRatio,
+        cursor: isDragging ? "grabbing" : "ew-resize",
+      };
+
   return (
     <div className="rounded-[24px] bg-white/60 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="eyebrow">Before / after</p>
-        <div className="flex items-center gap-3">
-          <span className="muted text-sm">Drag on image to compare</span>
-          {onOpen ? (
-            <button className="button button-secondary px-4 py-2 text-sm" onClick={onOpen} type="button">
-              Open lightbox
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <p className="eyebrow">Before / after</p>
       <div className="mt-3 overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(255,255,255,0.72)]">
-        <div
-          className="relative w-full cursor-ew-resize select-none overflow-hidden touch-none bg-[rgba(243,239,230,0.82)]"
-          onDragStart={(event) => event.preventDefault()}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={() => setIsDragging(false)}
-          onLostPointerCapture={() => setIsDragging(false)}
-          ref={sliderRef}
-          style={{ aspectRatio, cursor: isDragging ? "grabbing" : "ew-resize" }}
-        >
-          <div className="absolute inset-0">
-            <Image
-              alt={resultAlt}
-              className="pointer-events-none object-contain"
-              draggable={false}
-              fill
-              onLoad={syncAspectRatio}
-              sizes="100vw"
-              src={resultSrc}
-            />
-            <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
-              After
-            </div>
-          </div>
+        <div className={fitWithinViewport ? "flex items-center justify-center bg-[rgba(243,239,230,0.82)] p-3 sm:p-4" : "bg-[rgba(243,239,230,0.82)]"}>
           <div
-            className="pointer-events-none absolute inset-0"
-            style={{ clipPath: `inset(0 ${100 - sliderValue}% 0 0)` }}
+            className="relative w-full cursor-ew-resize select-none overflow-hidden touch-none"
+            onDragStart={(event) => event.preventDefault()}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={() => setIsDragging(false)}
+            onLostPointerCapture={() => setIsDragging(false)}
+            ref={sliderRef}
+            style={sliderStyle}
           >
-            <Image
-              alt={originalAlt}
-              className="pointer-events-none object-contain"
-              draggable={false}
-              fill
-              onLoad={syncAspectRatio}
-              sizes="100vw"
-              src={originalSrc}
-            />
-            <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
-              Before
+            <div className="absolute inset-0">
+              <Image
+                alt={resultAlt}
+                className="pointer-events-none object-contain"
+                draggable={false}
+                fill
+                onLoad={syncAspectRatio}
+                sizes="100vw"
+                src={resultSrc}
+              />
+              <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+                After
+              </div>
             </div>
-          </div>
-          <div className="pointer-events-none absolute inset-y-0" style={{ left: `calc(${sliderValue}% - 1px)` }}>
-            <div className="relative h-full w-[2px] bg-white/95 shadow-[0_0_0_1px_rgba(0,0,0,0.12)]">
-              <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-lg text-[var(--foreground)] shadow-[0_10px_30px_rgba(17,24,18,0.18)]">
-                <span aria-hidden="true">↔</span>
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ clipPath: `inset(0 ${100 - sliderValue}% 0 0)` }}
+            >
+              <Image
+                alt={originalAlt}
+                className="pointer-events-none object-contain"
+                draggable={false}
+                fill
+                onLoad={syncAspectRatio}
+                sizes="100vw"
+                src={originalSrc}
+              />
+              <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-[rgba(18,24,19,0.72)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">
+                Before
+              </div>
+            </div>
+            <div className="pointer-events-none absolute inset-y-0" style={{ left: `calc(${sliderValue}% - 1px)` }}>
+              <div className="relative h-full w-[2px] bg-white/95 shadow-[0_0_0_1px_rgba(0,0,0,0.12)]">
+                <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-lg text-[var(--foreground)] shadow-[0_10px_30px_rgba(17,24,18,0.18)]">
+                  <span aria-hidden="true">↔</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-black/8 px-4 py-3 text-sm">
           <span>{filename}</span>
-          <span className="muted">{isDragging ? "Dragging" : "Drag the divider to reveal edits"}</span>
+          {onOpen ? (
+            <button
+              aria-label={`Open ${filename} in lightbox`}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-[var(--foreground)] transition hover:-translate-y-0.5 hover:bg-[rgba(20,83,45,0.08)]"
+              onClick={onOpen}
+              type="button"
+            >
+              <FullscreenIcon />
+            </button>
+          ) : (
+            <span className="muted">{isDragging ? "Dragging" : "Drag the divider to compare"}</span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function SingleImagePreview({ alt, emptyLabel, label, src }: { alt: string; emptyLabel: string; label: string; src: string | null }) {
+function SingleImagePreview({
+  alt,
+  emptyLabel,
+  fitBounds,
+  fitWithinViewport = false,
+  label,
+  src,
+}: {
+  alt: string;
+  emptyLabel: string;
+  fitBounds?: { height: number; width: number } | null;
+  fitWithinViewport?: boolean;
+  label: string;
+  src: string | null;
+}) {
   const [aspectRatio, setAspectRatio] = useState(16 / 10);
 
   const syncAspectRatio = (event: SyntheticEvent<HTMLImageElement>) => {
@@ -157,13 +239,27 @@ function SingleImagePreview({ alt, emptyLabel, label, src }: { alt: string; empt
     }
   };
 
+  const viewportFitSize = fitWithinViewport ? getViewportFitSize(aspectRatio, fitBounds ?? null) : null;
+
+  const imageStyle = fitWithinViewport
+    ? {
+        aspectRatio,
+        width: viewportFitSize ? `${viewportFitSize.width}px` : "100%",
+        height: viewportFitSize ? `${viewportFitSize.height}px` : undefined,
+        maxWidth: viewportFitSize ? `${viewportFitSize.maxWidth}px` : "100%",
+        maxHeight: viewportFitSize ? `${viewportFitSize.maxHeight}px` : "100%",
+      }
+    : { aspectRatio };
+
   return (
     <div className="rounded-[24px] bg-white/60 p-4">
       <p className="eyebrow">{label}</p>
       {src ? (
         <div className="mt-3 overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(255,255,255,0.72)]">
-          <div className="relative w-full bg-[rgba(243,239,230,0.82)]" style={{ aspectRatio }}>
-            <Image alt={alt} className="object-contain" draggable={false} fill onLoad={syncAspectRatio} sizes="100vw" src={src} />
+          <div className={fitWithinViewport ? "flex items-center justify-center bg-[rgba(243,239,230,0.82)] p-3 sm:p-4" : "bg-[rgba(243,239,230,0.82)]"}>
+            <div className="relative w-full" style={imageStyle}>
+              <Image alt={alt} className="object-contain" draggable={false} fill onLoad={syncAspectRatio} sizes="100vw" src={src} />
+            </div>
           </div>
         </div>
       ) : (
@@ -185,11 +281,14 @@ export function BatchImagePreview({
   resultSrc,
 }: BatchImagePreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [modalBounds, setModalBounds] = useState<{ height: number; width: number } | null>(null);
+  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   const processedOriginalSrc = originalSrc ?? null;
   const processedResultSrc = resultSrc ?? null;
   const hasProcessedImage = processedOriginalSrc !== null && processedResultSrc !== null;
   const canOpen = Boolean(originalSrc || resultSrc);
+  const canRenderPortal = typeof document !== "undefined";
   const modalLabel = hasProcessedImage ? "Before / after" : "Original image";
   const modalTitle = hasProcessedImage ? `Compare edits for ${filename}` : filename;
 
@@ -209,6 +308,8 @@ export function BatchImagePreview({
   const modalContent = hasProcessedImage ? (
     <BeforeAfterSlider
       filename={filename}
+      fitBounds={modalBounds}
+      fitWithinViewport
       originalAlt={originalAlt}
       originalSrc={processedOriginalSrc}
       resultAlt={resultAlt}
@@ -218,6 +319,8 @@ export function BatchImagePreview({
     <SingleImagePreview
       alt={resultSrc ? resultAlt : originalAlt}
       emptyLabel={resultSrc ? resultEmptyLabel : originalEmptyLabel}
+      fitBounds={modalBounds}
+      fitWithinViewport
       label={resultSrc ? "Returned image" : "Original image"}
       src={resultSrc ?? originalSrc}
     />
@@ -244,6 +347,31 @@ export function BatchImagePreview({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const element = modalContentRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const updateBounds = () => {
+      setModalBounds({ height: element.clientHeight, width: element.clientWidth });
+    };
+
+    updateBounds();
+
+    const observer = new ResizeObserver(updateBounds);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isOpen]);
+
   return (
     <>
       {canOpen && !hasProcessedImage ? (
@@ -254,27 +382,38 @@ export function BatchImagePreview({
         previewContent
       )}
 
-      {isOpen && canOpen ? (
-        <div
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,24,19,0.82)] p-4 backdrop-blur-sm sm:p-8"
-          onClick={() => setIsOpen(false)}
-          role="dialog"
-        >
-          <div className="panel w-full max-w-[min(96vw,1800px)] rounded-[30px] p-4 sm:p-6" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="eyebrow">{modalLabel}</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{modalTitle}</h3>
+      {canRenderPortal && isOpen && canOpen
+        ? createPortal(
+            <div
+              aria-modal="true"
+              className="fixed inset-0 z-[100] flex min-h-screen w-screen items-center justify-center bg-[rgba(18,24,19,0.82)] p-4 backdrop-blur-sm sm:p-8"
+              onClick={() => setIsOpen(false)}
+              role="dialog"
+            >
+              <div
+                className="panel mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-[min(96vw,1800px)] flex-col rounded-[30px] p-4 sm:max-h-[calc(100vh-4rem)] sm:p-6"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="eyebrow">{modalLabel}</p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{modalTitle}</h3>
+                  </div>
+                  <button className="button button-secondary" onClick={() => setIsOpen(false)} type="button">
+                    Close
+                  </button>
+                </div>
+                <div
+                  className="min-h-0 flex flex-1 items-center justify-center overflow-hidden rounded-[24px] bg-[rgba(255,255,255,0.72)] p-2 sm:p-4"
+                  ref={modalContentRef}
+                >
+                  {modalContent}
+                </div>
               </div>
-              <button className="button button-secondary" onClick={() => setIsOpen(false)} type="button">
-                Close
-              </button>
-            </div>
-            <div className="max-h-[82vh] overflow-auto rounded-[24px] bg-[rgba(255,255,255,0.72)] p-2 sm:p-4">{modalContent}</div>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
