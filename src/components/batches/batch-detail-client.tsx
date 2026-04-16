@@ -68,7 +68,7 @@ export function BatchDetailClient({
 
   return (
     <>
-      <BatchRunControls batchId={batchId} batchStatus={batchStatus} />
+      <BatchRunControls batchId={batchId} batchStatus={batchStatus} imageCount={imageCards.length} />
       <section className="grid gap-4">
         {imageCards.map((imageCard) => (
           <BatchImageCard batchId={batchId} image={imageCard} key={imageCard.id} onRunStateChange={handleRunStateChange} />

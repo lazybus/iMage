@@ -7,6 +7,7 @@ import { useState } from "react";
 import { BatchImagePreview } from "@/components/batches/batch-image-preview";
 import type { BatchDetailImageCard } from "@/components/batches/batch-detail-client";
 import { StatusPill } from "@/components/batches/status-pill";
+import { trackEvent } from "@/lib/analytics";
 
 function PlayIcon() {
   return (
@@ -136,6 +137,10 @@ export function BatchImageCard({
       return;
     }
 
+    trackEvent("image_processing_started", {
+      trigger: "image_card",
+      image_name_length: image.originalFilename.length,
+    });
     router.refresh();
   }
 

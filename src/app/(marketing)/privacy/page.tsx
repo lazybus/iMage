@@ -25,14 +25,14 @@ const sections = [
     title: "How we use information",
     paragraphs: [
       "We use information to operate the product, secure access to private image jobs, process queued editing tasks, return downloadable results, troubleshoot failures, and improve reliability of the service.",
-      "We may also use logs and workflow metadata to investigate abuse, enforce our policies, satisfy legal obligations, and maintain records of prior runs for operational history.",
+      "We may also use logs and workflow metadata to investigate abuse, enforce our policies, satisfy legal obligations, and maintain records of prior runs for operational history. If you consent to analytics, we use Google Analytics to measure product navigation plus successful upload and processing-start activity at an aggregate level.",
     ],
   },
   {
     title: "Third-party processing and infrastructure",
     paragraphs: [
-      "iMage relies on third-party infrastructure providers. Based on the current implementation, account and storage functions are handled through Supabase, and image-editing requests may be routed through a Nano Banana provider adapter and related model infrastructure.",
-      "Those providers may process your images, prompts, and related metadata as needed to deliver the requested output. Their own terms and privacy practices apply to data they handle on our behalf or under their own policies.",
+      "iMage relies on third-party infrastructure providers. Based on the current implementation, account and storage functions are handled through Supabase, image-editing requests may be routed through a Nano Banana provider adapter and related model infrastructure, and optional usage measurement is handled through Google Analytics when a user opts in.",
+      "Those providers may process your images, prompts, related metadata, or usage telemetry as needed to deliver the requested output or product measurement. Their own terms and privacy practices apply to data they handle on our behalf or under their own policies.",
     ],
   },
   {

@@ -4,21 +4,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { trackEvent } from "@/lib/analytics";
 import type { BatchStatus } from "@/lib/db/types";
 
 export function BatchRunControls({
   batchId,
   batchStatus,
+  imageCount,
 }: {
   batchId: string;
   batchStatus: BatchStatus;
+  imageCount: number;
 }) {
   const router = useRouter();
   const [isBusy, setIsBusy] = useState(false);
 
   async function runBatch() {
     setIsBusy(true);
-    await fetch(`/api/batches/${batchId}/run`, {
+    const response = await fetch(`/api/batches/${batchId}/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,6 +29,14 @@ export function BatchRunControls({
       body: JSON.stringify({ upscaleRequested: false }),
     });
     setIsBusy(false);
+
+    if (response.ok) {
+      trackEvent("batch_processing_started", {
+        image_count: imageCount,
+        trigger: "batch_run_controls",
+      });
+    }
+
     router.refresh();
   }
 

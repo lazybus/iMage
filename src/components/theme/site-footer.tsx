@@ -1,6 +1,8 @@
 import type { Route } from "next";
 import Link from "next/link";
 
+import { AnalyticsPreferencesButton } from "@/components/theme/analytics-preferences-button";
+
 type FooterLink = {
   href: Route;
   label: string;
@@ -28,6 +30,7 @@ const supportLinks: readonly FooterLink[] = [
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  const hasAnalyticsPreferences = Boolean(process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID?.trim());
 
   return (
     <footer className="footer-shell">
@@ -86,7 +89,10 @@ export function SiteFooter() {
 
           <div className="footer-meta mt-8 gap-4 border-t border-[var(--line)] pt-6 text-sm muted">
             <p>© {year} iMage. Draft legal copy for pre-launch review.</p>
-            <p>Powered by Tob Studios.</p>
+            <div className="flex flex-wrap items-center gap-4">
+              {hasAnalyticsPreferences ? <AnalyticsPreferencesButton /> : null}
+              <p>Powered by Tob Studios.</p>
+            </div>
           </div>
         </div>
       </div>

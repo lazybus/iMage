@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { trackEvent } from "@/lib/analytics";
+
 const SUPPORTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp";
 const WEBP_QUALITY = 0.82;
@@ -442,6 +444,11 @@ export function NewBatchForm({ configured }: { configured: boolean }) {
     }
 
     const payload = (await response.json()) as { batchId: string };
+    trackEvent("image_batch_created", {
+      image_count: populatedRows.length,
+      prompt_count: populatedRows.length,
+      used_custom_title: title.trim().length > 0,
+    });
     router.push(`/batches/${payload.batchId}`);
     router.refresh();
   }
