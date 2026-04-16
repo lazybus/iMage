@@ -403,7 +403,135 @@ select {
   background: var(--overlay-contrast);
 }
 
+.landing-hero {
+  position: relative;
+  background:
+    radial-gradient(circle at top right, var(--hero-tint), transparent 36%),
+    linear-gradient(180deg, var(--panel), var(--panel));
+}
+
+.landing-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: var(--accent-soft);
+  color: var(--foreground);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-mini-card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 1rem;
+  background: var(--surface-soft);
+}
+
+.landing-mini-label {
+  margin: 0 0 0.4rem;
+  color: var(--foreground);
+  font-size: 0.84rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-mini-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.landing-side-panel {
+  background:
+    linear-gradient(180deg, var(--surface-soft), var(--surface-muted)),
+    var(--panel-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.landing-detail-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 1rem;
+  background: var(--surface-soft);
+}
+
+.landing-detail-card p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.landing-detail-kicker {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-outcome-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.landing-outcome-card {
+  display: grid;
+  gap: 0.35rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+}
+
+.landing-outcome-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.landing-outcome-copy {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.landing-step-card {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 1.25rem;
+  background: var(--surface-soft);
+}
+
+.landing-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: var(--accent-soft);
+  color: var(--foreground);
+  font-size: 0.86rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-trust-card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 1rem 1.1rem;
+  background: var(--surface-soft);
+}
+
+.landing-trust-card p {
+  margin: 0;
+  line-height: 1.65;
+}
+
 @media (max-width: 768px) {
+  .landing-hero {
+    border-radius: 30px;
+  }
+
   .shell {
     width: min(100vw - 20px, 100%);
   }
