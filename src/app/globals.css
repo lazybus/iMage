@@ -76,6 +76,10 @@ body {
   font-family: Georgia, "Times New Roman", serif;
 }
 
+#__next {
+  min-height: 100%;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -257,6 +261,133 @@ select {
 
 .hover-surface:hover {
   background: var(--surface-strong);
+}
+
+.site-frame {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.site-main {
+  flex: 1;
+}
+
+.footer-shell {
+  padding: 0 0 1rem;
+}
+
+.footer-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-panel::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: min(420px, 55%);
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  content: "";
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.footer-title {
+  margin: 0;
+  max-width: 11ch;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.footer-tagline {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.footer-copy {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.footer-link-groups {
+  align-content: start;
+}
+
+.footer-link-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.footer-link,
+.footer-inline-link {
+  color: var(--foreground);
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+.footer-link:hover,
+.footer-inline-link:hover {
+  color: var(--accent);
+}
+
+.footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.footer-meta p {
+  margin: 0;
+}
+
+.info-page {
+  overflow: hidden;
+}
+
+.info-page-summary,
+.info-page-copy {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.info-page-heading {
+  margin: 0;
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  line-height: 1.1;
+}
+
+.info-page-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.info-page-aside {
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hero-tint {

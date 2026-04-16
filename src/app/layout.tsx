@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 import "@/app/globals.css";
+import { SiteFooter } from "@/components/theme/site-footer";
 
 const themeInitScript = `(() => {
   const storageKey = "image-theme";
@@ -26,7 +27,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html data-theme="dark" lang="en" suppressHydrationWarning>
       <body data-theme="dark">
         <Script dangerouslySetInnerHTML={{ __html: themeInitScript }} id="theme-init" strategy="beforeInteractive" />
-        {children}
+        <div className="site-frame">
+          <div className="site-main">{children}</div>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

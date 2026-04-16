@@ -5,6 +5,8 @@ import { buildOriginalPath } from "@/lib/storage/paths";
 import { getStorageBucketName, isSupabaseConfigured } from "@/lib/supabase/config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+const WEBP_MIME_TYPE = "image/webp";
+
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
@@ -54,6 +56,17 @@ export async function POST(request: Request) {
 
   if (files.length === 0) {
     return NextResponse.json({ error: "At least one image is required." }, { status: 400 });
+  }
+
+  for (const [index, file] of files.entries()) {
+    if (file.type !== WEBP_MIME_TYPE) {
+      return NextResponse.json(
+        {
+          error: `Image ${index + 1} must be optimized to WebP before upload.`,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const batch = await createBatchRecord(supabase, user, title);
