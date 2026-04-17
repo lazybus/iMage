@@ -1,6 +1,7 @@
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID?.trim() ?? "";
 export const ANALYTICS_CONSENT_STORAGE_KEY = "image-analytics-consent";
 export const ANALYTICS_PREFERENCES_EVENT = "image:analytics-preferences";
+export const ANALYTICS_CONSENT_CHANGED_EVENT = "image:analytics-consent-changed";
 
 export type AnalyticsConsentState = "granted" | "denied";
 
@@ -42,6 +43,7 @@ export function updateAnalyticsConsent(state: AnalyticsConsentState) {
     ad_storage: "denied",
     ad_user_data: "denied",
   });
+  window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGED_EVENT));
 }
 
 export function openAnalyticsPreferences() {

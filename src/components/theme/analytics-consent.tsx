@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
+  ANALYTICS_CONSENT_CHANGED_EVENT,
   ANALYTICS_PREFERENCES_EVENT,
   GA_MEASUREMENT_ID,
   type AnalyticsConsentState,
@@ -13,6 +14,40 @@ import {
   trackEvent,
   updateAnalyticsConsent,
 } from "@/lib/analytics";
+
+function subscribeToAnalyticsConsent(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  function handleStorage(event: StorageEvent) {
+    if (event.key && event.key !== "image-analytics-consent") {
+      return;
+    }
+
+    onStoreChange();
+  }
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(ANALYTICS_CONSENT_CHANGED_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(ANALYTICS_CONSENT_CHANGED_EVENT, onStoreChange);
+  };
+}
+
+function useStoredAnalyticsConsent() {
+  return useSyncExternalStore(subscribeToAnalyticsConsent, readStoredAnalyticsConsent, () => null);
+}
+
+function useHasHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 
 function AnalyticsToggle({
   checked,
@@ -46,21 +81,10 @@ function AnalyticsToggle({
 
 export function AnalyticsConsent() {
   const pathname = usePathname();
-  const [consent, setConsent] = useState<AnalyticsConsentState | null>(() => {
-    if (!GA_MEASUREMENT_ID || typeof window === "undefined") {
-      return null;
-    }
-
-    return readStoredAnalyticsConsent();
-  });
+  const hasHydrated = useHasHydrated();
+  const consent = useStoredAnalyticsConsent();
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(() => {
-    if (!GA_MEASUREMENT_ID || typeof window === "undefined") {
-      return false;
-    }
-
-    return readStoredAnalyticsConsent() === "granted";
-  });
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
   const [isAnalyticsReady, setIsAnalyticsReady] = useState(() => {
     if (!GA_MEASUREMENT_ID || typeof window === "undefined") {
       return false;
@@ -104,12 +128,11 @@ export function AnalyticsConsent() {
     });
   }, [consent, isAnalyticsReady, pathname]);
 
-  if (!GA_MEASUREMENT_ID) {
+  if (!GA_MEASUREMENT_ID || !hasHydrated) {
     return null;
   }
 
   function applyConsent(nextConsent: AnalyticsConsentState) {
-    setConsent(nextConsent);
     setAnalyticsEnabled(nextConsent === "granted");
     updateAnalyticsConsent(nextConsent);
     setIsPreferencesOpen(false);
@@ -149,7 +172,14 @@ export function AnalyticsConsent() {
               <button className="button button-secondary" onClick={() => applyConsent("denied")} type="button">
                 Essential only
               </button>
-              <button className="button button-secondary" onClick={() => setIsPreferencesOpen(true)} type="button">
+              <button
+                className="button button-secondary"
+                onClick={() => {
+                  setAnalyticsEnabled(consent === "granted");
+                  setIsPreferencesOpen(true);
+                }}
+                type="button"
+              >
                 Manage
               </button>
               <button className="button button-primary" onClick={() => applyConsent("granted")} type="button">
