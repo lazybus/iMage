@@ -3,8 +3,23 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 
 import { NanoBananaProvider } from "@/lib/providers/nano-banana";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const prompt = formData.get("prompt")?.toString().trim();
   const imageFile = formData.get("imageFile");
@@ -28,9 +43,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      providerJobId: result.providerJobId,
       image: result.image,
-      rawPayload: result.rawPayload,
     });
   } catch (error) {
     return NextResponse.json(

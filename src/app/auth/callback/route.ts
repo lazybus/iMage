@@ -13,7 +13,11 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      return NextResponse.redirect(`${origin}/login?message=${encodeURIComponent(error.message)}`);
+    }
   }
 
   return NextResponse.redirect(`${origin}/batches`);
