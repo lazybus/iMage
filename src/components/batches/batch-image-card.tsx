@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BatchImagePreview } from "@/components/batches/batch-image-preview";
 import type { BatchDetailImageCard } from "@/components/batches/batch-detail-client";
@@ -55,11 +55,9 @@ function ChevronUpIcon() {
 export function BatchImageCard({
   batchId,
   image,
-  onRunStateChange,
 }: {
   batchId: string;
   image: BatchDetailImageCard;
-  onRunStateChange: (id: string, label: string, isActive: boolean) => void;
 }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -67,10 +65,39 @@ export function BatchImageCard({
   const [savedPrompt, setSavedPrompt] = useState(image.editPrompt);
   const [isSaving, setIsSaving] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [isQueuePending, setIsQueuePending] = useState(image.status === "queued" || image.status === "processing");
   const [message, setMessage] = useState<string | null>(null);
 
   const hasPromptChanges = prompt.trim() !== savedPrompt.trim();
   const isCompleted = image.status === "completed";
+  const isQueued = image.status === "queued";
+  const isProcessing = image.status === "processing";
+  const isRunUnavailable = isQueued || isProcessing;
+
+  useEffect(() => {
+    if (image.status === "queued" || image.status === "processing") {
+      setIsQueuePending(true);
+      return;
+    }
+
+    setIsQueuePending(false);
+  }, [image.status]);
+
+  async function queueImageRun() {
+    const response = await fetch(`/api/images/${image.id}/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ batchId, upscaleRequested: false }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(payload?.error ?? "Unable to start image edit.");
+    }
+  }
 
   async function savePrompt() {
     const nextPrompt = prompt.trim();
@@ -117,31 +144,49 @@ export function BatchImageCard({
     }
 
     setIsRunning(true);
+    setIsQueuePending(true);
     setMessage(null);
-    onRunStateChange(image.id, image.originalFilename, true);
 
-    const response = await fetch(`/api/images/${image.id}/run`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ batchId, upscaleRequested: false }),
-    });
-
-    setIsRunning(false);
-    onRunStateChange(image.id, image.originalFilename, false);
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      setMessage(payload?.error ?? "Unable to start image edit.");
+    try {
+      await queueImageRun();
+    } catch (error) {
+      setIsRunning(false);
+      setIsQueuePending(false);
+      setMessage(error instanceof Error ? error.message : "Unable to start image edit.");
       return;
     }
+
+    setIsRunning(false);
 
     trackEvent("image_processing_started", {
       trigger: "image_card",
       image_name_length: image.originalFilename.length,
     });
+    setMessage("Image queued. Track progress from Processing.");
     router.refresh();
+  }
+
+  async function handleRetryImage() {
+    const canContinue = await savePrompt();
+
+    if (!canContinue) {
+      return;
+    }
+
+    setIsRetrying(true);
+    setIsQueuePending(true);
+    setMessage(null);
+
+    try {
+      await queueImageRun();
+      setMessage("Retry queued. Track progress from Processing.");
+      router.refresh();
+    } catch (error) {
+      setIsQueuePending(false);
+      setMessage(error instanceof Error ? error.message : "Unable to retry image edit.");
+    } finally {
+      setIsRetrying(false);
+    }
   }
 
   return (
@@ -170,13 +215,13 @@ export function BatchImageCard({
         <div className="mt-6 space-y-6">
           <div className="flex items-center justify-end gap-3">
             <button
-              aria-label={isRunning ? "Editing image" : "Edit image"}
+              aria-label={isRunning || isQueuePending || isProcessing || isQueued ? "Image queued or processing" : "Edit image"}
               className="surface-strong border-theme inline-flex h-11 w-11 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover-surface"
-              disabled={isSaving || isRunning}
+              disabled={isSaving || isRunning || isRetrying || isQueuePending || isRunUnavailable}
               onClick={handleRunImage}
               type="button"
             >
-              {isRunning ? <SpinnerIcon /> : <PlayIcon />}
+              {isRunning || isQueuePending || isProcessing || isQueued ? <SpinnerIcon /> : <PlayIcon />}
             </button>
             {isCompleted ? (
               <Link
@@ -195,10 +240,17 @@ export function BatchImageCard({
           </label>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button className="button button-secondary" disabled={!hasPromptChanges || isSaving || isRunning} onClick={savePrompt} type="button">
+            <button className="button button-secondary" disabled={!hasPromptChanges || isSaving || isRunning || isRetrying || isQueuePending || isRunUnavailable} onClick={savePrompt} type="button">
               {isSaving ? "Saving prompt..." : "Save Prompt"}
             </button>
-            <span className="text-sm muted">{message ?? (hasPromptChanges ? "Unsaved prompt changes." : "Prompt is up to date.")}</span>
+            {image.failureMessage ? (
+              <button className="button button-secondary" disabled={isSaving || isRunning || isRetrying || isQueuePending || isRunUnavailable} onClick={handleRetryImage} type="button">
+                {isRetrying ? "Retrying image..." : "Retry Image"}
+              </button>
+            ) : null}
+            <span className="text-sm muted">
+              {message ?? (isQueuePending || isRunUnavailable ? "Currently queued in the processing menu." : hasPromptChanges ? "Unsaved prompt changes." : "Prompt is up to date.")}
+            </span>
           </div>
 
           <BatchImagePreview
@@ -210,6 +262,13 @@ export function BatchImageCard({
             resultEmptyLabel={isCompleted ? "Returned image preview unavailable" : "Returned image not available yet"}
             resultSrc={image.resultPreviewUrl}
           />
+
+          {image.failureMessage ? (
+            <div className="surface-soft rounded-[22px] border border-[var(--line)] p-4">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Latest failure reason</p>
+              <p className="mt-2 text-sm muted">{image.failureMessage}</p>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </article>

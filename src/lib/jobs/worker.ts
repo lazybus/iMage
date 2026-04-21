@@ -7,8 +7,38 @@ import { NanoBananaProvider } from "@/lib/providers/nano-banana";
 import { buildProcessedPath } from "@/lib/storage/paths";
 import { getStorageBucketName } from "@/lib/supabase/config";
 
+const STALE_QUEUED_RUN_MS = 2 * 60 * 1000;
+const STALE_PROCESSING_RUN_MS = 15 * 60 * 1000;
+
 interface WorkerImageResultRecord extends ImageResultRecord {
   batch_images: BatchImageRecord | null;
+}
+
+function normalizeProcessingError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unknown processing error.";
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("credentials are not configured")) {
+    return "Image editing credentials are not configured.";
+  }
+
+  if (normalizedMessage.includes("unable to download") || normalizedMessage.includes("download")) {
+    return "The original image could not be loaded from storage.";
+  }
+
+  if (normalizedMessage.includes("returned no image data")) {
+    return "The image editing service finished without returning an image.";
+  }
+
+  if (normalizedMessage.includes("rejected the request")) {
+    return message;
+  }
+
+  if (normalizedMessage.includes("upload")) {
+    return "The generated image could not be saved to storage.";
+  }
+
+  return message;
 }
 
 function deriveBatchStatus(imageStatuses: BatchStatus[]) {
@@ -48,6 +78,111 @@ async function updateBatchStatus(supabase: SupabaseClient, batchId: string, user
   if (batchUpdateError) {
     throw batchUpdateError;
   }
+}
+
+async function markRunAsFailed(supabase: SupabaseClient, run: ProcessingRunRecord, errorMessage: string) {
+  const { data: runResults, error: resultError } = await supabase
+    .from("image_results")
+    .select("id, image_id, status")
+    .eq("run_id", run.id)
+    .eq("user_id", run.user_id);
+
+  if (resultError) {
+    throw resultError;
+  }
+
+  const pendingResults = (runResults ?? []).filter((result: { status: BatchStatus }) => result.status === "queued" || result.status === "processing");
+  const pendingImageIds = [...new Set(pendingResults.map((result: { image_id: string }) => result.image_id))];
+  const now = new Date().toISOString();
+
+  if (pendingResults.length > 0) {
+    const { error: updateResultError } = await supabase
+      .from("image_results")
+      .update({
+        status: "failed",
+        error_message: errorMessage,
+      })
+      .eq("run_id", run.id)
+      .eq("user_id", run.user_id)
+      .in(
+        "status",
+        ["queued", "processing"],
+      );
+
+    if (updateResultError) {
+      throw updateResultError;
+    }
+  }
+
+  if (pendingImageIds.length > 0) {
+    const { error: imageUpdateError } = await supabase
+      .from("batch_images")
+      .update({ status: "failed" })
+      .eq("batch_id", run.batch_id)
+      .eq("user_id", run.user_id)
+      .in("id", pendingImageIds);
+
+    if (imageUpdateError) {
+      throw imageUpdateError;
+    }
+  }
+
+  const { error: runUpdateError } = await supabase
+    .from("processing_runs")
+    .update({
+      status: "failed",
+      completed_at: now,
+      error_message: errorMessage,
+    })
+    .eq("id", run.id)
+    .eq("user_id", run.user_id);
+
+  if (runUpdateError) {
+    throw runUpdateError;
+  }
+
+  await updateBatchStatus(supabase, run.batch_id, run.user_id);
+}
+
+function isStaleRun(run: ProcessingRunRecord) {
+  const now = Date.now();
+
+  if (run.status === "queued") {
+    return now - new Date(run.created_at).getTime() > STALE_QUEUED_RUN_MS;
+  }
+
+  if (run.status === "processing") {
+    const referenceTime = run.started_at ?? run.created_at;
+    return now - new Date(referenceTime).getTime() > STALE_PROCESSING_RUN_MS;
+  }
+
+  return false;
+}
+
+export async function recoverStaleRunsForUser(supabase: SupabaseClient, userId: string) {
+  const { data: runs, error } = await supabase
+    .from("processing_runs")
+    .select("*")
+    .eq("user_id", userId)
+    .in("status", ["queued", "processing"])
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  let recoveredCount = 0;
+
+  for (const run of (runs ?? []) as ProcessingRunRecord[]) {
+    if (!isStaleRun(run)) {
+      continue;
+    }
+
+    recoveredCount += 1;
+    await markRunAsFailed(supabase, run, "Recovered from interrupted processing. Retry to continue.");
+  }
+
+  return recoveredCount;
 }
 
 async function processImageResult(supabase: SupabaseClient, result: WorkerImageResultRecord, run: ProcessingRunRecord) {
@@ -173,7 +308,7 @@ export async function processRunNow(supabase: SupabaseClient, runId: string, use
       await processImageResult(supabase, result, run as ProcessingRunRecord);
     } catch (error) {
       failedCount += 1;
-      await markFailed(supabase, result, error instanceof Error ? error.message : "Unknown processing error.");
+      await markFailed(supabase, result, normalizeProcessingError(error));
     }
   }
 

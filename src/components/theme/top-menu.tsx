@@ -1,10 +1,11 @@
 import Link from "next/link";
 
+import { QueueMenu } from "@/components/queue/queue-menu";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export function TopMenu() {
   return (
-    <div className="topbar rounded-[26px] px-4 py-3 sm:px-6">
+    <div className="topbar relative z-40 rounded-[26px] px-4 py-3 sm:px-6">
       <div className="flex items-center gap-4">
         <Link className="rounded-full px-4 py-2 text-sm font-semibold tracking-[0.18em] text-[var(--muted)] uppercase transition hover-surface" href="/">
           <span className="text-[var(--brand-mark)]">I</span>
@@ -16,7 +17,10 @@ export function TopMenu() {
           </Link>
         </nav>
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-3">
+        <QueueMenu />
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

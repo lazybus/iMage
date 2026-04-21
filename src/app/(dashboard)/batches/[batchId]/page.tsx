@@ -62,6 +62,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ ba
             batchStatus={batch.status}
             imageCards={imageCards.map(({ image, latestResult, originalPreviewUrl, resultPreviewUrl }) => ({
               editPrompt: image.edit_prompt,
+              failureMessage: latestResult?.error_message ?? null,
               id: image.id,
               originalFilename: image.original_filename,
               originalPreviewUrl,

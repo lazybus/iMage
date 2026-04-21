@@ -57,3 +57,31 @@ export interface ImageResultRecord {
 export interface BatchWithImages extends BatchRecord {
   images: Array<BatchImageRecord & { results: ImageResultRecord[] }>;
 }
+
+export interface QueueRunProgress {
+  total: number;
+  queued: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}
+
+export interface QueueRunSummary extends QueueRunProgress {
+  id: string;
+  batch_id: string;
+  batch_title: string;
+  target_image_id: string | null;
+  target_image_name: string | null;
+  run_scope: RunScope;
+  status: BatchStatus;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+}
+
+export interface QueueSummary {
+  active_runs: QueueRunSummary[];
+  recent_history: QueueRunSummary[];
+  recent_failures: QueueRunSummary[];
+}

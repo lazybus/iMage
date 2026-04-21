@@ -18,9 +18,14 @@ export function BatchRunControls({
 }) {
   const router = useRouter();
   const [isBusy, setIsBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const isQueued = batchStatus === "queued";
+  const isProcessing = batchStatus === "processing";
+  const isRunUnavailable = isQueued || isProcessing;
 
   async function runBatch() {
     setIsBusy(true);
+    setMessage(null);
     const response = await fetch(`/api/batches/${batchId}/run`, {
       method: "POST",
       headers: {
@@ -30,26 +35,35 @@ export function BatchRunControls({
     });
     setIsBusy(false);
 
-    if (response.ok) {
-      trackEvent("batch_processing_started", {
-        image_count: imageCount,
-        trigger: "batch_run_controls",
-      });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      setMessage(payload?.error ?? "Unable to queue the batch.");
+      return;
     }
+
+    trackEvent("batch_processing_started", {
+      image_count: imageCount,
+      trigger: "batch_run_controls",
+    });
+
+    setMessage("Batch queued. Track progress from Processing.");
 
     router.refresh();
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
-      <button className="button button-primary" disabled={isBusy} onClick={runBatch} type="button">
-        {isBusy ? "Editing all images..." : "Edit All Images"}
-      </button>
-      {batchStatus === "completed" ? (
-        <Link className="button button-secondary" href={`/api/batches/${batchId}/download`}>
-          Download All
-        </Link>
-      ) : null}
+    <div className="grid gap-3">
+      <div className="flex flex-wrap gap-3">
+        <button className="button button-primary" disabled={isBusy || isRunUnavailable} onClick={runBatch} type="button">
+          {isBusy ? "Queueing images..." : isRunUnavailable ? "Batch in queue..." : "Edit All Images"}
+        </button>
+        {batchStatus === "completed" ? (
+          <Link className="button button-secondary" href={`/api/batches/${batchId}/download`}>
+            Download All
+          </Link>
+        ) : null}
+      </div>
+      <p className="text-sm muted">{message ?? (isRunUnavailable ? "This batch is already queued in Processing." : "Queue the whole batch and keep working elsewhere in the dashboard.")}</p>
     </div>
   );
 }

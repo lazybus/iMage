@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 import { enqueueBatchRun } from "@/lib/jobs/enqueue";
@@ -44,7 +45,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ bat
   }
 
   const run = await enqueueBatchRun(supabase, batch, images ?? [], user, Boolean(payload.upscaleRequested));
-  const processing = await processRunNow(supabase, run.id, user.id);
 
-  return NextResponse.json(processing);
+  after(async () => {
+    await processRunNow(supabase, run.id, user.id);
+  });
+
+  return NextResponse.json(
+    {
+      runId: run.id,
+      status: run.status,
+      runScope: run.run_scope,
+    },
+    { status: 202 },
+  );
 }
