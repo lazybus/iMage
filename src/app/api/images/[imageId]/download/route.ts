@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
 
-import { getStorageBucketName, isSupabaseConfigured } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/auth/api";
+import { getStorageBucketName } from "@/lib/supabase/config";
 
 export async function GET(request: Request, { params }: { params: Promise<{ imageId: string }> }) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  }
-
   const { imageId } = await params;
   const { searchParams } = new URL(request.url);
   const preferUpscaled = searchParams.get("variant") === "upscaled";
   const storageBucket = getStorageBucketName();
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
+
+  const { supabase, user } = auth;
 
   const { data: image, error: imageError } = await supabase
     .from("batch_images")

@@ -1,26 +1,19 @@
 import { after } from "next/server";
 import { NextResponse } from "next/server";
 
+import { requireApiUser } from "@/lib/auth/api";
 import { enqueueBatchRun } from "@/lib/jobs/enqueue";
 import { processRunNow } from "@/lib/jobs/worker";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request, { params }: { params: Promise<{ batchId: string }> }) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  }
-
   const { batchId } = await params;
   const payload = (await request.json().catch(() => ({}))) as { upscaleRequested?: boolean };
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
+
+  const { supabase, user } = auth;
 
   const { data: batch, error: batchError } = await supabase
     .from("batches")

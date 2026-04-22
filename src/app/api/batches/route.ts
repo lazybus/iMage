@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
 
+import { requireApiUser } from "@/lib/auth/api";
 import { createBatchRecord } from "@/lib/db/queries";
 import { buildOriginalPath } from "@/lib/storage/paths";
-import { getStorageBucketName, isSupabaseConfigured } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getStorageBucketName } from "@/lib/supabase/config";
 
 const WEBP_MIME_TYPE = "image/webp";
 
 export async function GET() {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user } = auth;
 
   const { data, error } = await supabase
     .from("batches")
@@ -35,18 +29,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user } = auth;
 
   const formData = await request.formData();
   const storageBucket = getStorageBucketName();

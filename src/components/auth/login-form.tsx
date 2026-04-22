@@ -9,16 +9,28 @@ export function LoginForm({
   configured,
   initialMessage = "",
   mode = "sign-in",
+  redirectTo = "/batches",
 }: {
   configured: boolean;
   initialMessage?: string;
   mode?: "sign-in" | "sign-up";
+  redirectTo?: string;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(initialMessage);
   const [isBusy, setIsBusy] = useState(false);
   const isSignUp = mode === "sign-up";
+
+  function buildCallbackUrl() {
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+
+    if (redirectTo && redirectTo !== "/batches") {
+      callbackUrl.searchParams.set("next", redirectTo);
+    }
+
+    return callbackUrl.toString();
+  }
 
   async function signInWithPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +46,7 @@ export function LoginForm({
     setIsBusy(false);
     setMessage(error ? error.message : "Signed in. Refresh if the redirect does not happen automatically.");
     if (!error) {
-      window.location.href = "/batches";
+      window.location.href = redirectTo;
     }
   }
 
@@ -64,7 +76,7 @@ export function LoginForm({
 
     if (data.session) {
       setMessage("Account created. Redirecting to your batches.");
-      window.location.href = "/batches";
+      window.location.href = redirectTo;
       return;
     }
 
@@ -82,7 +94,7 @@ export function LoginForm({
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildCallbackUrl(),
       },
     });
     setIsBusy(false);
@@ -100,7 +112,7 @@ export function LoginForm({
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: buildCallbackUrl(),
       },
     });
     setIsBusy(false);

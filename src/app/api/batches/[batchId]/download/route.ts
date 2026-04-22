@@ -1,25 +1,19 @@
 import JSZip from "jszip";
 import { NextResponse } from "next/server";
 
+import { requireApiUser } from "@/lib/auth/api";
 import type { ImageResultRecord } from "@/lib/db/types";
-import { getStorageBucketName, isSupabaseConfigured } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getStorageBucketName } from "@/lib/supabase/config";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ batchId: string }> }) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  }
-
   const { batchId } = await params;
   const storageBucket = getStorageBucketName();
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
+
+  const { supabase, user } = auth;
 
   const { data: batch, error: batchError } = await supabase
     .from("batches")

@@ -2,22 +2,13 @@ import { Buffer } from "node:buffer";
 
 import { NextResponse } from "next/server";
 
+import { requireApiUser } from "@/lib/auth/api";
 import { NanoBananaProvider } from "@/lib/providers/nano-banana";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiUser();
+  if ("response" in auth) {
+    return auth.response;
   }
 
   const formData = await request.formData();

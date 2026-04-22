@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
@@ -7,13 +8,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; next?: string }>;
 }) {
-  const { user } = await getOptionalUser();
   const resolvedSearchParams = await searchParams;
+  const redirectTo = resolvedSearchParams.next?.startsWith("/") && !resolvedSearchParams.next.startsWith("//") ? resolvedSearchParams.next : "/batches";
+  const { user } = await getOptionalUser();
 
   if (user) {
-    redirect("/batches");
+    redirect(redirectTo as Route);
   }
 
   return (
@@ -31,7 +33,7 @@ export default async function LoginPage({
             </div>
           ) : null}
         </section>
-        <LoginForm configured={isSupabaseConfigured()} initialMessage={resolvedSearchParams.message} />
+        <LoginForm configured={isSupabaseConfigured()} initialMessage={resolvedSearchParams.message} redirectTo={redirectTo} />
       </div>
     </main>
   );
