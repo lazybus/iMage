@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { createImagePatchHandler } from "./image-patch";
 import { createImageRunHandler } from "./image-run";
@@ -10,8 +10,8 @@ import { createQueueGetHandler } from "./queue";
 test("queue handler returns auth failure responses unchanged", async () => {
   const GET = createQueueGetHandler({
     requireApiUser: async () => ({ response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }),
-    recoverStaleRunsForUser: async () => undefined,
-    getUserQueueSummary: async () => ({ runs: [] }),
+    recoverStaleRunsForUser: async () => 0,
+    getUserQueueSummary: async () => ({ active_runs: [], recent_history: [], recent_failures: [] }),
   });
 
   const response = await GET();
@@ -30,6 +30,7 @@ test("queue handler returns queue summary for authenticated users", async () => 
     requireApiUser: async () => ({ supabase, user } as never),
     recoverStaleRunsForUser: async (...args) => {
       calls.push({ kind: "recover", args });
+      return 0;
     },
     getUserQueueSummary: async (...args) => {
       calls.push({ kind: "summary", args });
@@ -152,7 +153,7 @@ test("image run handler enqueues and schedules processing for authenticated user
   const batch = { id: "batch-1" };
   const run = { id: "run-1", status: "queued", run_scope: "single" };
   const fromCalls: string[] = [];
-  let scheduledCallback: (() => Promise<void>) | undefined;
+  let scheduledTask: Parameters<typeof after>[0] | undefined;
   const processCalls: unknown[][] = [];
 
   const supabase = {
@@ -198,8 +199,8 @@ test("image run handler enqueues and schedules processing for authenticated user
       processCalls.push(args);
       return undefined as never;
     },
-    scheduleAfter: (callback) => {
-      scheduledCallback = callback;
+    scheduleAfter: (task) => {
+      scheduledTask = task;
     },
   });
 
@@ -218,8 +219,13 @@ test("image run handler enqueues and schedules processing for authenticated user
     runScope: run.run_scope,
   });
   assert.deepEqual(fromCalls, ["batch_images", "batches"]);
-  assert.ok(scheduledCallback);
+  assert.ok(scheduledTask);
 
-  await scheduledCallback?.();
+  if (typeof scheduledTask === "function") {
+    await scheduledTask();
+  } else {
+    await scheduledTask;
+  }
+
   assert.deepEqual(processCalls, [[supabase, run.id, user.id]]);
 });
