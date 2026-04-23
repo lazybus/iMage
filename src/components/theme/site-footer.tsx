@@ -88,10 +88,17 @@ export function SiteFooter() {
           </div>
 
           <div className="footer-meta mt-8 gap-4 border-t border-[var(--line)] pt-6 text-sm muted">
-            <p>© {year} iMage. Draft legal copy for pre-launch review.</p>
+            <p>© {year} iMage.</p>
             <div className="flex flex-wrap items-center gap-4">
               {hasAnalyticsPreferences ? <AnalyticsPreferencesButton /> : null}
-              <p>Powered by Tob Studios.</p>
+              <a
+                className="footer-link"
+                href="https://tobstudios.com"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Powered by Tob Studios.
+              </a>
             </div>
           </div>
         </div>
