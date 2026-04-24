@@ -11,11 +11,10 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 const PUBLIC_PREFIXES = ["/auth/callback"] as const;
+const SUPABASE_AUTH_COOKIE_PATTERN = /^(?:__Host-|__Secure-)?sb-.*-auth-token(?:\.\d+)?$/;
 
 type AuthGateDecision =
   | { kind: "allow" }
-  | { kind: "api-unavailable"; error: string }
-  | { kind: "api-unauthorized" }
   | { kind: "redirect-login"; location: string };
 
 function shouldFailClosedWhenUnconfigured(runtimeMode: string | undefined) {
@@ -28,6 +27,10 @@ export function isPublicPath(pathname: string) {
   }
 
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+export function hasSupabaseAuthSessionCookie(cookieNames: string[]) {
+  return cookieNames.some((name) => SUPABASE_AUTH_COOKIE_PATTERN.test(name));
 }
 
 export function resolveAuthGateDecision({
@@ -52,10 +55,6 @@ export function resolveAuthGateDecision({
       return { kind: "allow" };
     }
 
-    if (pathname.startsWith("/api/")) {
-      return { kind: "api-unavailable", error: "Supabase authentication is not configured." };
-    }
-
     const unavailableUrl = new URL("/login", requestUrl);
     unavailableUrl.searchParams.set("message", "Authentication is currently unavailable.");
     unavailableUrl.searchParams.set("next", pathname);
@@ -64,10 +63,6 @@ export function resolveAuthGateDecision({
       kind: "redirect-login",
       location: unavailableUrl.toString(),
     };
-  }
-
-  if (pathname.startsWith("/api/")) {
-    return { kind: "api-unauthorized" };
   }
 
   const loginUrl = new URL("/login", requestUrl);

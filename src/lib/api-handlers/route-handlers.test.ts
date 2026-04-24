@@ -9,12 +9,13 @@ import { createQueueGetHandler } from "./queue";
 
 test("queue handler returns auth failure responses unchanged", async () => {
   const GET = createQueueGetHandler({
+    requireApiSession: async () => ({ response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }),
     requireApiUser: async () => ({ response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }),
     recoverStaleRunsForUser: async () => 0,
     getUserQueueSummary: async () => ({ active_runs: [], recent_history: [], recent_failures: [] }),
   });
 
-  const response = await GET();
+  const response = await GET(new Request("https://example.com/api/queue"));
 
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: "Unauthorized" });
@@ -27,6 +28,7 @@ test("queue handler returns queue summary for authenticated users", async () => 
   const summary = { queued: 2, processing: 1, failed: 0 };
 
   const GET = createQueueGetHandler({
+    requireApiSession: async () => ({ supabase } as never),
     requireApiUser: async () => ({ supabase, user } as never),
     recoverStaleRunsForUser: async (...args) => {
       calls.push({ kind: "recover", args });
@@ -38,14 +40,40 @@ test("queue handler returns queue summary for authenticated users", async () => 
     },
   });
 
-  const response = await GET();
+  const response = await GET(new Request("https://example.com/api/queue"));
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(await response.json(), summary);
   assert.deepEqual(calls, [
+    { kind: "summary", args: [supabase] },
+  ]);
+});
+
+test("queue handler runs stale recovery only during maintenance requests", async () => {
+  const supabase = { label: "supabase" };
+  const user = { id: "user-1" };
+  const calls: Array<{ kind: string; args: unknown[] }> = [];
+
+  const GET = createQueueGetHandler({
+    requireApiSession: async () => ({ supabase } as never),
+    requireApiUser: async () => ({ supabase, user } as never),
+    recoverStaleRunsForUser: async (...args) => {
+      calls.push({ kind: "recover", args });
+      return 1;
+    },
+    getUserQueueSummary: async (...args) => {
+      calls.push({ kind: "summary", args });
+      return { active_runs: [], recent_history: [], recent_failures: [] } as never;
+    },
+  });
+
+  const response = await GET(new Request("https://example.com/api/queue?maintenance=1"));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [
     { kind: "recover", args: [supabase, user.id] },
-    { kind: "summary", args: [supabase, user.id] },
+    { kind: "summary", args: [supabase] },
   ]);
 });
 

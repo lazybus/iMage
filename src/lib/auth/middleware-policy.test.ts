@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isPublicPath, resolveAuthGateDecision } from "./middleware-policy";
+import { hasSupabaseAuthSessionCookie, isPublicPath, resolveAuthGateDecision } from "./middleware-policy";
 
 const APP_ORIGIN = "https://example.com";
 
@@ -35,6 +35,13 @@ test("known public routes stay public", () => {
   }
 });
 
+test("middleware session hint only trusts Supabase auth token cookies", () => {
+  assert.equal(hasSupabaseAuthSessionCookie(["sb-project-ref-auth-token"]), true);
+  assert.equal(hasSupabaseAuthSessionCookie(["__Secure-sb-project-ref-auth-token.0"]), true);
+  assert.equal(hasSupabaseAuthSessionCookie(["sb-project-ref-auth-token-code-verifier"]), false);
+  assert.equal(hasSupabaseAuthSessionCookie(["other-cookie"]), false);
+});
+
 test("private pages redirect unauthenticated users to login with next path", () => {
   const decision = resolveAuthGateDecision({
     pathname: "/batches/new",
@@ -55,24 +62,11 @@ test("private pages redirect unauthenticated users to login with next path", () 
   assert.equal(redirectUrl.searchParams.get("next"), "/batches/new");
 });
 
-test("private API routes return unauthorized decisions for anonymous requests", () => {
-  assert.deepEqual(
-    resolveAuthGateDecision({
-      pathname: "/api/queue",
-      requestUrl: `${APP_ORIGIN}/api/queue`,
-      isSupabaseConfigured: true,
-      isAuthenticated: false,
-      runtimeMode: "production",
-    }),
-    { kind: "api-unauthorized" },
-  );
-});
-
 test("authenticated requests are allowed through private routes", () => {
   assert.deepEqual(
     resolveAuthGateDecision({
-      pathname: "/api/images/123/run",
-      requestUrl: `${APP_ORIGIN}/api/images/123/run`,
+      pathname: "/batches/new",
+      requestUrl: `${APP_ORIGIN}/batches/new`,
       isSupabaseConfigured: true,
       isAuthenticated: true,
       runtimeMode: "production",
@@ -124,17 +118,4 @@ test("middleware fail-closes private pages in production when Supabase is not co
   assert.equal(redirectUrl.pathname, "/login");
   assert.equal(redirectUrl.searchParams.get("message"), "Authentication is currently unavailable.");
   assert.equal(redirectUrl.searchParams.get("next"), "/batches");
-});
-
-test("middleware fail-closes private APIs in production when Supabase is not configured", () => {
-  assert.deepEqual(
-    resolveAuthGateDecision({
-      pathname: "/api/queue",
-      requestUrl: `${APP_ORIGIN}/api/queue`,
-      isSupabaseConfigured: false,
-      isAuthenticated: false,
-      runtimeMode: "production",
-    }),
-    { kind: "api-unavailable", error: "Supabase authentication is not configured." },
-  );
 });

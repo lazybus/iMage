@@ -1,6 +1,7 @@
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { TopMenu } from "@/components/theme/top-menu";
-import { requireUser } from "@/lib/auth/guards";
+import { requirePageUser } from "@/lib/auth/guards";
+import { getUserQueueSummary } from "@/lib/db/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export default async function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -16,12 +17,13 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     );
   }
 
-  const { user } = await requireUser();
+  const { supabase, user } = await requirePageUser();
+  const initialQueueSummary = await getUserQueueSummary(supabase);
 
   return (
     <main className="shell shell-dashboard py-6 sm:py-8">
       <div className="grid gap-6">
-        <TopMenu />
+        <TopMenu initialQueueSummary={initialQueueSummary} showQueueMenu />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
         <DashboardSidebar email={user.email ?? "unknown"} />

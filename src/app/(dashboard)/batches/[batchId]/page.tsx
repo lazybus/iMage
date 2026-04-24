@@ -2,12 +2,12 @@ import { notFound } from "next/navigation";
 
 import { BatchDetailClient } from "@/components/batches/batch-detail-client";
 import { StatusPill } from "@/components/batches/status-pill";
-import { requireUser } from "@/lib/auth/guards";
+import { requirePageUser, type RequiredUserContext } from "@/lib/auth/guards";
 import { getBatchDetail } from "@/lib/db/queries";
 import { getStorageBucketName } from "@/lib/supabase/config";
 
 async function createPreviewUrl(
-  storage: Awaited<ReturnType<typeof requireUser>>["supabase"]["storage"],
+  storage: RequiredUserContext["supabase"]["storage"],
   path: string | null,
 ) {
   if (!path) {
@@ -25,8 +25,8 @@ async function createPreviewUrl(
 
 export default async function BatchDetailPage({ params }: { params: Promise<{ batchId: string }> }) {
   const { batchId } = await params;
-  const { supabase, user } = await requireUser();
-  const batch = await getBatchDetail(supabase, user.id, batchId);
+  const { supabase } = await requirePageUser();
+  const batch = await getBatchDetail(supabase, batchId);
 
   if (!batch) {
     notFound();

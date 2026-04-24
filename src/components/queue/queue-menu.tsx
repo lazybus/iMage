@@ -8,6 +8,8 @@ import { StatusPill } from "@/components/batches/status-pill";
 import type { QueueRunSummary, QueueSummary } from "@/lib/db/types";
 
 const DISMISSED_HISTORY_RUNS_STORAGE_KEY = "image-dismissed-history-runs";
+const QUEUE_POLL_INTERVAL_MS = 3000;
+const QUEUE_MAINTENANCE_INTERVAL_MS = 5 * 60 * 1000;
 
 function QueueIcon() {
   return (
@@ -97,8 +99,8 @@ function formatTimeLabel(timestamp: string | null) {
   return date.toLocaleString();
 }
 
-async function loadQueueSummary(signal?: AbortSignal) {
-  const response = await fetch("/api/queue", {
+async function loadQueueSummary({ maintenance = false, signal }: { maintenance?: boolean; signal?: AbortSignal } = {}) {
+  const response = await fetch(maintenance ? "/api/queue?maintenance=1" : "/api/queue", {
     cache: "no-store",
     signal,
   });
@@ -172,18 +174,23 @@ function QueueRunCard({
   );
 }
 
-export function QueueMenu() {
+export function QueueMenu({ initialSummary }: { initialSummary?: QueueSummary }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [summary, setSummary] = useState<QueueSummary>({ active_runs: [], recent_history: [], recent_failures: [] });
-  const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<QueueSummary>(initialSummary ?? { active_runs: [], recent_history: [], recent_failures: [] });
+  const [isLoading, setIsLoading] = useState(!initialSummary);
   const [error, setError] = useState<string | null>(null);
   const [retryingRunId, setRetryingRunId] = useState<string | null>(null);
   const [dismissedHistoryRunIds, setDismissedHistoryRunIds] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const snapshotRef = useRef<string | null>(null);
-  const initialLoadRef = useRef(true);
-  const previousActiveCountRef = useRef(0);
+  const snapshotRef = useRef<string | null>(initialSummary ? createSnapshotKey(initialSummary) : null);
+  const timerRef = useRef<number | null>(null);
+  const lastMaintenanceAtRef = useRef<number>(0);
+  const activeCountRef = useRef(initialSummary?.active_runs.length ?? 0);
+  const clearTimerRef = useRef<() => void>(() => undefined);
+  const pollRef = useRef<((forceMaintenance?: boolean) => Promise<void>) | null>(null);
+  const scheduleNextPollRef = useRef<(nextActiveCount: number) => void>(() => undefined);
+  const previousActiveCountRef = useRef(initialSummary?.active_runs.length ?? 0);
   const activeCount = summary.active_runs.length;
   const visibleRecentHistory = summary.recent_history.filter((run) => !dismissedHistoryRunIds.includes(run.id));
   const hasVisibleCompletedRuns = visibleRecentHistory.some((run) => run.status === "completed");
@@ -230,6 +237,20 @@ export function QueueMenu() {
     dismissRunIds(visibleRecentHistory.filter((run) => run.status === status).map((run) => run.id));
   }
 
+  function handleToggleOpen() {
+    setIsOpen((current) => {
+      const nextIsOpen = !current;
+
+      if (nextIsOpen) {
+        setIsLoading(true);
+        setError(null);
+        void pollRef.current?.();
+      }
+
+      return nextIsOpen;
+    });
+  }
+
   async function handleRetry(runId: string) {
     setRetryingRunId(runId);
     setError(null);
@@ -239,6 +260,9 @@ export function QueueMenu() {
       const nextSummary = await loadQueueSummary();
       setSummary(nextSummary);
       snapshotRef.current = createSnapshotKey(nextSummary);
+      activeCountRef.current = nextSummary.active_runs.length;
+      previousActiveCountRef.current = nextSummary.active_runs.length;
+      scheduleNextPollRef.current(nextSummary.active_runs.length);
       router.refresh();
     } catch (retryError) {
       setError(retryError instanceof Error ? retryError.message : "Unable to retry the processing run.");
@@ -249,13 +273,52 @@ export function QueueMenu() {
 
   useEffect(() => {
     let isMounted = true;
-    let timer: number | undefined;
+    let controller: AbortController | null = null;
 
-    const poll = async () => {
-      const controller = new AbortController();
+    const clearTimer = () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    const shouldRunMaintenance = (forceMaintenance = false) => {
+      if (forceMaintenance) {
+        lastMaintenanceAtRef.current = Date.now();
+        return true;
+      }
+
+      if (Date.now() - lastMaintenanceAtRef.current < QUEUE_MAINTENANCE_INTERVAL_MS) {
+        return false;
+      }
+
+      lastMaintenanceAtRef.current = Date.now();
+      return true;
+    };
+
+    const scheduleNextPoll = (nextActiveCount: number) => {
+      clearTimer();
+
+      if (nextActiveCount === 0 || document.visibilityState !== "visible") {
+        return;
+      }
+
+      timerRef.current = window.setTimeout(() => {
+        void pollRef.current?.();
+      }, QUEUE_POLL_INTERVAL_MS);
+    };
+
+    const poll = async (forceMaintenance = false) => {
+      clearTimer();
+
+      if (controller) {
+        controller.abort();
+      }
+
+      controller = new AbortController();
 
       try {
-        const nextSummary = await loadQueueSummary(controller.signal);
+        const nextSummary = await loadQueueSummary({ maintenance: shouldRunMaintenance(forceMaintenance), signal: controller.signal });
 
         if (!isMounted) {
           return;
@@ -271,48 +334,75 @@ export function QueueMenu() {
         }
         snapshotRef.current = nextSnapshot;
 
-        if (initialLoadRef.current) {
-          initialLoadRef.current = false;
-        }
-
         if (previousActiveCountRef.current === 0 && nextSummary.active_runs.length > 0) {
           setIsOpen(true);
         }
 
+        activeCountRef.current = nextSummary.active_runs.length;
         previousActiveCountRef.current = nextSummary.active_runs.length;
       } catch (fetchError) {
         if (!isMounted) {
           return;
         }
 
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+          return;
+        }
+
         setIsLoading(false);
         setError(fetchError instanceof Error ? fetchError.message : "Unable to load processing queue.");
+        activeCountRef.current = 0;
       } finally {
         if (!isMounted) {
           return;
         }
 
-        const delay = activeCount > 0 ? 3000 : 12000;
-        timer = window.setTimeout(poll, delay);
+        scheduleNextPoll(activeCountRef.current);
       }
     };
 
-    void poll();
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        clearTimer();
+        if (controller) {
+          controller.abort();
+          controller = null;
+        }
+        return;
+      }
+
+      if (activeCountRef.current > 0) {
+        void pollRef.current?.();
+      }
+    }
+
+    clearTimerRef.current = clearTimer;
+    scheduleNextPollRef.current = scheduleNextPoll;
+    pollRef.current = poll;
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    if (initialSummary?.active_runs.length) {
+      scheduleNextPoll(initialSummary.active_runs.length);
+    } else if (!initialSummary) {
+      void poll(true);
+    }
 
     return () => {
       isMounted = false;
-      if (timer) {
-        window.clearTimeout(timer);
+      clearTimer();
+      if (controller) {
+        controller.abort();
       }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeCount, router]);
+  }, [initialSummary, router]);
 
   return (
     <div className="relative" ref={containerRef}>
       <button
         aria-expanded={isOpen}
         className="theme-toggle min-w-[10.5rem] justify-between gap-3"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={handleToggleOpen}
         type="button"
       >
         <span className="inline-flex items-center gap-2">

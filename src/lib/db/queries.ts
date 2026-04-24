@@ -11,11 +11,10 @@ import type {
   QueueSummary,
 } from "@/lib/db/types";
 
-export async function listUserBatches(supabase: SupabaseClient, userId: string) {
+export async function listUserBatches(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("batches")
     .select("*")
-    .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -25,12 +24,11 @@ export async function listUserBatches(supabase: SupabaseClient, userId: string) 
   return (data ?? []) as BatchRecord[];
 }
 
-export async function getBatchDetail(supabase: SupabaseClient, userId: string, batchId: string) {
+export async function getBatchDetail(supabase: SupabaseClient, batchId: string) {
   const { data: batch, error: batchError } = await supabase
     .from("batches")
     .select("*")
     .eq("id", batchId)
-    .eq("user_id", userId)
     .single();
 
   if (batchError) {
@@ -41,7 +39,6 @@ export async function getBatchDetail(supabase: SupabaseClient, userId: string, b
     .from("batch_images")
     .select("*")
     .eq("batch_id", batchId)
-    .eq("user_id", userId)
     .order("sort_order", { ascending: true });
 
   if (imagesError) {
@@ -56,7 +53,6 @@ export async function getBatchDetail(supabase: SupabaseClient, userId: string, b
       .from("image_results")
       .select("*")
       .in("image_id", imageIds)
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (resultError) {
@@ -138,7 +134,7 @@ function buildProgressMap(results: Array<Pick<ImageResultRecord, "run_id" | "sta
   return progressMap;
 }
 
-async function hydrateQueueRuns(supabase: SupabaseClient, userId: string, runs: ProcessingRunRecord[]) {
+async function hydrateQueueRuns(supabase: SupabaseClient, runs: ProcessingRunRecord[]) {
   if (runs.length === 0) {
     return [] satisfies QueueRunSummary[];
   }
@@ -147,9 +143,9 @@ async function hydrateQueueRuns(supabase: SupabaseClient, userId: string, runs: 
   const targetImageIds = [...new Set(runs.map((run) => run.target_image_id).filter((value): value is string => Boolean(value)))];
 
   const [{ data: batches, error: batchError }, { data: images, error: imageError }, { data: results, error: resultError }] = await Promise.all([
-    supabase.from("batches").select("id, title").in("id", batchIds).eq("user_id", userId),
-    targetImageIds.length > 0 ? supabase.from("batch_images").select("id, original_filename").in("id", targetImageIds).eq("user_id", userId) : Promise.resolve({ data: [], error: null }),
-    supabase.from("image_results").select("run_id, status, error_message").in("run_id", runs.map((run) => run.id)).eq("user_id", userId),
+    supabase.from("batches").select("id, title").in("id", batchIds),
+    targetImageIds.length > 0 ? supabase.from("batch_images").select("id, original_filename").in("id", targetImageIds) : Promise.resolve({ data: [], error: null }),
+    supabase.from("image_results").select("run_id, status, error_message").in("run_id", runs.map((run) => run.id)),
   ]);
 
   if (batchError) {
@@ -199,26 +195,27 @@ async function hydrateQueueRuns(supabase: SupabaseClient, userId: string, runs: 
   });
 }
 
-export async function getUserQueueSummary(supabase: SupabaseClient, userId: string): Promise<QueueSummary> {
+function createHydratedRunMap(runs: QueueRunSummary[]) {
+  return new Map(runs.map((run) => [run.id, run]));
+}
+
+export async function getUserQueueSummary(supabase: SupabaseClient): Promise<QueueSummary> {
   const [{ data: activeRuns, error: activeError }, { data: failedRuns, error: failureError }, { data: historyRuns, error: historyError }] = await Promise.all([
     supabase
       .from("processing_runs")
       .select("*")
-      .eq("user_id", userId)
       .in("status", ["queued", "processing"])
       .order("created_at", { ascending: false })
       .limit(12),
     supabase
       .from("processing_runs")
       .select("*")
-      .eq("user_id", userId)
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .limit(8),
     supabase
       .from("processing_runs")
       .select("*")
-      .eq("user_id", userId)
       .in("status", ["completed", "failed"])
       .order("created_at", { ascending: false })
       .limit(12),
@@ -236,15 +233,24 @@ export async function getUserQueueSummary(supabase: SupabaseClient, userId: stri
     throw historyError;
   }
 
-  const [hydratedActiveRuns, hydratedFailedRuns, hydratedHistoryRuns] = await Promise.all([
-    hydrateQueueRuns(supabase, userId, (activeRuns ?? []) as ProcessingRunRecord[]),
-    hydrateQueueRuns(supabase, userId, (failedRuns ?? []) as ProcessingRunRecord[]),
-    hydrateQueueRuns(supabase, userId, (historyRuns ?? []) as ProcessingRunRecord[]),
-  ]);
+  const activeRunList = (activeRuns ?? []) as ProcessingRunRecord[];
+  const failedRunList = (failedRuns ?? []) as ProcessingRunRecord[];
+  const historyRunList = (historyRuns ?? []) as ProcessingRunRecord[];
+  const uniqueRuns = [...new Map([...activeRunList, ...failedRunList, ...historyRunList].map((run) => [run.id, run])).values()];
+  const hydratedRunMap = createHydratedRunMap(await hydrateQueueRuns(supabase, uniqueRuns));
 
   return {
-    active_runs: hydratedActiveRuns,
-    recent_history: hydratedHistoryRuns,
-    recent_failures: hydratedFailedRuns,
+    active_runs: activeRunList.flatMap((run) => {
+      const hydratedRun = hydratedRunMap.get(run.id);
+      return hydratedRun ? [hydratedRun] : [];
+    }),
+    recent_history: historyRunList.flatMap((run) => {
+      const hydratedRun = hydratedRunMap.get(run.id);
+      return hydratedRun ? [hydratedRun] : [];
+    }),
+    recent_failures: failedRunList.flatMap((run) => {
+      const hydratedRun = hydratedRunMap.get(run.id);
+      return hydratedRun ? [hydratedRun] : [];
+    }),
   };
 }

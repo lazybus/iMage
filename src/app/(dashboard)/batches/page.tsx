@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 import { StatusPill } from "@/components/batches/status-pill";
-import { requireUser } from "@/lib/auth/guards";
+import { requirePageUser } from "@/lib/auth/guards";
 import { listUserBatches } from "@/lib/db/queries";
 
 export default async function BatchesPage() {
-  const { supabase, user } = await requireUser();
-  const batches = await listUserBatches(supabase, user.id);
+  const { supabase } = await requirePageUser();
+  const batches = await listUserBatches(supabase);
 
   return (
     <section className="panel rounded-[32px] p-8">
