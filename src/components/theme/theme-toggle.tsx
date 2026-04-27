@@ -4,22 +4,23 @@ import { useEffect, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "image-theme";
 const THEME_CHANGED_EVENT = "image:theme-changed";
+type ThemeMode = "dark" | "light";
 
-function syncTheme(theme: "dark" | "light") {
+function syncTheme(theme: ThemeMode) {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
   document.body.dataset.theme = theme;
 }
 
-function applyTheme(theme: "dark" | "light") {
+function applyTheme(theme: ThemeMode) {
   syncTheme(theme);
   window.localStorage.setItem(STORAGE_KEY, theme);
   window.dispatchEvent(new Event(THEME_CHANGED_EVENT));
 }
 
-function readThemeSnapshot() {
+function readThemeSnapshot(): ThemeMode {
   if (typeof window === "undefined") {
-    return "dark" satisfies "dark" | "light";
+    return "dark";
   }
 
   const storedTheme = window.localStorage.getItem(STORAGE_KEY);
@@ -53,7 +54,7 @@ function subscribeToTheme(onStoreChange: () => void) {
   };
 }
 
-function LightbulbIcon({ theme }: { theme: "dark" | "light" }) {
+function LightbulbIcon({ theme }: { theme: ThemeMode }) {
   const stroke = theme === "dark" ? "currentColor" : "#14532d";
   const fill = theme === "dark" ? "rgba(142, 208, 163, 0.2)" : "rgba(20, 83, 45, 0.14)";
 
@@ -73,7 +74,7 @@ function LightbulbIcon({ theme }: { theme: "dark" | "light" }) {
 }
 
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribeToTheme, readThemeSnapshot, () => "dark");
+  const theme = useSyncExternalStore<ThemeMode>(subscribeToTheme, readThemeSnapshot, (): ThemeMode => "dark");
 
   useEffect(() => {
     syncTheme(theme);
