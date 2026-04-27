@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { StatusPill } from "@/components/batches/status-pill";
+import { BatchListItem } from "@/components/batches/batch-list-item";
 import { requirePageUser } from "@/lib/auth/guards";
 import { listUserBatches } from "@/lib/db/queries";
 
@@ -28,15 +28,7 @@ export default async function BatchesPage() {
       ) : (
         <div className="grid gap-4">
           {batches.map((batch) => (
-            <Link className="surface-muted hover-surface rounded-[26px] border border-theme p-5 transition" href={`/batches/${batch.id}`} key={batch.id}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-[-0.04em]">{batch.title}</h2>
-                  <p className="mt-2 text-sm muted">Updated {new Date(batch.updated_at).toLocaleString()}</p>
-                </div>
-                <StatusPill status={batch.status} />
-              </div>
-            </Link>
+            <BatchListItem batch={batch} key={batch.id} />
           ))}
         </div>
       )}

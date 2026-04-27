@@ -1,14 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "image-theme";
+const THEME_CHANGED_EVENT = "image:theme-changed";
 
-function applyTheme(theme: "dark" | "light") {
+function syncTheme(theme: "dark" | "light") {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
   document.body.dataset.theme = theme;
+}
+
+function applyTheme(theme: "dark" | "light") {
+  syncTheme(theme);
   window.localStorage.setItem(STORAGE_KEY, theme);
+  window.dispatchEvent(new Event(THEME_CHANGED_EVENT));
+}
+
+function readThemeSnapshot() {
+  if (typeof window === "undefined") {
+    return "dark" satisfies "dark" | "light";
+  }
+
+  const storedTheme = window.localStorage.getItem(STORAGE_KEY);
+
+  if (storedTheme === "light" || storedTheme === "dark") {
+    return storedTheme;
+  }
+
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+function subscribeToTheme(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key && event.key !== STORAGE_KEY) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(THEME_CHANGED_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(THEME_CHANGED_EVENT, onStoreChange);
+  };
 }
 
 function LightbulbIcon({ theme }: { theme: "dark" | "light" }) {
@@ -31,24 +73,15 @@ function LightbulbIcon({ theme }: { theme: "dark" | "light" }) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") {
-      return "dark";
-    }
+  const theme = useSyncExternalStore(subscribeToTheme, readThemeSnapshot, () => "dark");
 
-    const storedTheme = window.localStorage.getItem(STORAGE_KEY);
-
-    if (storedTheme === "light" || storedTheme === "dark") {
-      return storedTheme;
-    }
-
-    return document.documentElement.dataset.theme === "light" ? "light" : "dark";
-  });
+  useEffect(() => {
+    syncTheme(theme);
+  }, [theme]);
 
   function handleToggle() {
     const nextTheme = theme === "dark" ? "light" : "dark";
     applyTheme(nextTheme);
-    setTheme(nextTheme);
   }
 
   return (

@@ -140,10 +140,16 @@ select {
   color: #ffffff;
 }
 
-.pill[data-tone="draft"],
-.pill[data-tone="ready"] {
+.pill[data-tone="draft"] {
   background: rgba(31, 39, 33, 0.08);
   color: var(--foreground);
+}
+
+.pill[data-tone="ready"] {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, #5a9a70, #467d59);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 .button {

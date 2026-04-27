@@ -7,6 +7,14 @@ import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import type { BatchStatus } from "@/lib/db/types";
 
+function PlayIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path d="M8.25 6.75v10.5l8.25-5.25-8.25-5.25Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 export function BatchRunControls({
   batchId,
   batchStatus,
@@ -53,9 +61,10 @@ export function BatchRunControls({
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap justify-end gap-3">
         <button className="button button-primary" disabled={isBusy || isRunUnavailable} onClick={runBatch} type="button">
-          {isBusy ? "Queueing images..." : isRunUnavailable ? "Batch in queue..." : "Edit All Images"}
+          <PlayIcon />
+          <span>{isBusy ? "Queueing images..." : isRunUnavailable ? "Batch in queue..." : "Edit All Images"}</span>
         </button>
         {batchStatus === "completed" ? (
           <Link className="button button-secondary" href={`/api/batches/${batchId}/download`}>

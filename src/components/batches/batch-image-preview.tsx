@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
 
 interface BatchImagePreviewProps {
+  action?: ReactNode;
   filename: string;
   originalAlt: string;
   originalEmptyLabel: string;
@@ -15,6 +16,10 @@ interface BatchImagePreviewProps {
 }
 
 const LIGHTBOX_MEDIA_EDGE_BUFFER = 12;
+
+function shouldIgnorePreviewOpen(target: EventTarget | null) {
+  return target instanceof HTMLElement && Boolean(target.closest("button, a, input, textarea, select, summary, [role='button']"));
+}
 
 function getViewportFitSize(aspectRatio: number, bounds: { height: number; width: number } | null) {
   if (!bounds) {
@@ -59,6 +64,7 @@ function FullscreenIcon() {
 }
 
 function BeforeAfterSlider({
+  action,
   filename,
   fitBounds,
   fitWithinViewport = false,
@@ -68,6 +74,7 @@ function BeforeAfterSlider({
   resultAlt,
   resultSrc,
 }: {
+  action?: ReactNode;
   filename: string;
   fitBounds?: { height: number; width: number } | null;
   fitWithinViewport?: boolean;
@@ -140,7 +147,10 @@ function BeforeAfterSlider({
 
   return (
     <div className="surface-soft rounded-[24px] p-4">
-      <p className="eyebrow">Before / after</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="eyebrow">Before / after</p>
+        {action ?? null}
+      </div>
       <div className="surface-strong border-theme mt-3 overflow-hidden rounded-[18px] border">
         <div className={fitWithinViewport ? "surface-muted flex items-center justify-center p-3 sm:p-4" : "surface-muted"}>
           <div
@@ -215,6 +225,7 @@ function BeforeAfterSlider({
 }
 
 function SingleImagePreview({
+  action,
   alt,
   emptyLabel,
   fitBounds,
@@ -222,6 +233,7 @@ function SingleImagePreview({
   label,
   src,
 }: {
+  action?: ReactNode;
   alt: string;
   emptyLabel: string;
   fitBounds?: { height: number; width: number } | null;
@@ -253,7 +265,10 @@ function SingleImagePreview({
 
   return (
     <div className="surface-soft rounded-[24px] p-4">
-      <p className="eyebrow">{label}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="eyebrow">{label}</p>
+        {action ?? null}
+      </div>
       {src ? (
         <div className="surface-strong border-theme mt-3 overflow-hidden rounded-[18px] border">
           <div className={fitWithinViewport ? "surface-muted flex items-center justify-center p-3 sm:p-4" : "surface-muted"}>
@@ -272,6 +287,7 @@ function SingleImagePreview({
 }
 
 export function BatchImagePreview({
+  action,
   filename,
   originalAlt,
   originalEmptyLabel,
@@ -294,6 +310,7 @@ export function BatchImagePreview({
 
   const previewContent = hasProcessedImage ? (
     <BeforeAfterSlider
+      action={action}
       filename={filename}
       onOpen={() => setIsOpen(true)}
       originalAlt={originalAlt}
@@ -302,7 +319,7 @@ export function BatchImagePreview({
       resultSrc={processedResultSrc}
     />
   ) : (
-    <SingleImagePreview alt={originalAlt} emptyLabel={originalEmptyLabel} label="Original image" src={originalSrc} />
+    <SingleImagePreview action={action} alt={originalAlt} emptyLabel={originalEmptyLabel} label="Original image" src={originalSrc} />
   );
 
   const modalContent = hasProcessedImage ? (
@@ -372,12 +389,42 @@ export function BatchImagePreview({
     };
   }, [isOpen]);
 
+  function handlePreviewOpen() {
+    if (canOpen) {
+      setIsOpen(true);
+    }
+  }
+
   return (
     <>
       {canOpen && !hasProcessedImage ? (
-        <button className="block w-full text-left" onClick={() => setIsOpen(true)} type="button">
+        <div
+          aria-label={`Open ${filename}`}
+          className="block w-full text-left"
+          onClick={(event) => {
+            if (shouldIgnorePreviewOpen(event.target)) {
+              return;
+            }
+
+            handlePreviewOpen();
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+
+            if (shouldIgnorePreviewOpen(event.target)) {
+              return;
+            }
+
+            event.preventDefault();
+            handlePreviewOpen();
+          }}
+          role="button"
+          tabIndex={0}
+        >
           <div className="transition hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(17,24,18,0.12)]">{previewContent}</div>
-        </button>
+        </div>
       ) : (
         previewContent
       )}

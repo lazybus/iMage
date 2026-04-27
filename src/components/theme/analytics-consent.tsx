@@ -98,6 +98,23 @@ export function AnalyticsConsent() {
       return;
     }
 
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag(...args: unknown[]) {
+      window.dataLayer.push(args);
+    };
+    window.gtag("consent", "default", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!GA_MEASUREMENT_ID) {
+      return;
+    }
+
     if (consent) {
       updateAnalyticsConsent(consent);
     }
