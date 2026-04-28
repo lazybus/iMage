@@ -193,8 +193,6 @@ export function QueueMenu({ initialSummary }: { initialSummary?: QueueSummary })
   const previousActiveCountRef = useRef(initialSummary?.active_runs.length ?? 0);
   const activeCount = summary.active_runs.length;
   const visibleRecentHistory = summary.recent_history.filter((run) => !dismissedHistoryRunIds.includes(run.id));
-  const hasVisibleCompletedRuns = visibleRecentHistory.some((run) => run.status === "completed");
-  const hasVisibleFailedRuns = visibleRecentHistory.some((run) => run.status === "failed");
 
   useEffect(() => {
     setDismissedHistoryRunIds(loadDismissedHistoryRunIds());
@@ -233,8 +231,8 @@ export function QueueMenu({ initialSummary }: { initialSummary?: QueueSummary })
     dismissRunIds([runId]);
   }
 
-  function handleClearHistory(status: "completed" | "failed") {
-    dismissRunIds(visibleRecentHistory.filter((run) => run.status === status).map((run) => run.id));
+  function handleClearHistory() {
+    dismissRunIds(visibleRecentHistory.map((run) => run.id));
   }
 
   function handleToggleOpen() {
@@ -443,17 +441,11 @@ export function QueueMenu({ initialSummary }: { initialSummary?: QueueSummary })
 
               <section className="grid gap-3">
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-3">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Recent history</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Recent History</p>
                   <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm muted sm:justify-end">
-                    <span>Completed or failed runs</span>
-                    {hasVisibleCompletedRuns ? (
-                      <button className="font-semibold text-[var(--foreground)]" onClick={() => handleClearHistory("completed")} type="button">
-                        Clear completed
-                      </button>
-                    ) : null}
-                    {hasVisibleFailedRuns ? (
-                      <button className="font-semibold text-[var(--foreground)]" onClick={() => handleClearHistory("failed")} type="button">
-                        Clear failed
+                    {visibleRecentHistory.length > 0 ? (
+                      <button className="font-semibold text-[var(--foreground)]" onClick={handleClearHistory} type="button">
+                        Clear all
                       </button>
                     ) : null}
                   </div>
